@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_blank">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--brand:#00A56A;--deep:#00754C;--soft:#E6F7F0;--line:#C7EBDC;--ink:#141414;--ink2:rgba(0,0,0,.74);--ink3:rgba(0,0,0,.56);
+    --hair:rgba(0,0,0,.14);--accent:#FF6E40;--accent-soft:#FFF1EB;--accent-deep:#D9490F;--r:12px}
+  *{box-sizing:border-box}
+  body{margin:0;background:#F6F7F5;color:var(--ink);font:15px/1.6 "Noto Sans KR",Inter,system-ui,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 80px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  header .kick{font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--deep);text-transform:uppercase}
+  header h1{font:800 32px/1.15 Inter,"Noto Sans KR",sans-serif;letter-spacing:-.03em;margin:10px 0 6px}
+  header p{margin:0;color:var(--ink3)}
+  .flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:16px 0 22px}
+  .flow span{font:600 12.5px/1 Inter,"Noto Sans KR",sans-serif;padding:7px 12px;border-radius:999px;background:#fff;border:1px solid var(--hair)}
+  .flow span.on{background:var(--soft);border-color:var(--line);color:var(--deep)}
+  .flow i{color:var(--ink3);font-style:normal}
+  .card{background:#fff;border:1px solid var(--hair);border-radius:16px;padding:22px 24px;margin-bottom:16px}
+  .card h2{font:700 17px/1.3 Inter,"Noto Sans KR",sans-serif;margin:0 0 4px;letter-spacing:-.01em}
+  .card .hint{color:var(--ink3);font-size:13px;margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}
+  .grid .w2{grid-column:span 2}.grid .w4{grid-column:1/-1}
+  label{display:block;font-size:12.5px;font-weight:500;color:var(--ink2);margin-bottom:5px}
+  label small{color:var(--ink3);font-weight:400}
+  input,select,textarea{width:100%;font:14px/1.5 "Noto Sans KR",Inter,sans-serif;color:var(--ink);padding:9px 11px;border:1px solid var(--hair);border-radius:10px;background:#fff;outline:none;transition:border-color .15s ease-out,box-shadow .15s ease-out}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--soft)}
+  textarea{resize:vertical;font-family:Inter,"Noto Sans KR",sans-serif;font-size:13.5px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button{font:600 14px/1 "Noto Sans KR",Inter,sans-serif;padding:11px 18px;border-radius:10px;border:1px solid var(--hair);background:#fff;color:var(--ink);cursor:pointer;transition:background .15s ease-out,border-color .15s ease-out}
+  button:hover{border-color:rgba(0,0,0,.4)}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primary:hover{background:var(--deep)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .pill{font:500 12px/1 "IBM Plex Mono",monospace;padding:6px 10px;border-radius:999px;background:var(--soft);color:var(--deep);border:1px solid var(--line)}
+  .pill.no{background:var(--accent-soft);color:var(--accent-deep);border-color:#FFDCCE}
+  .note{font-size:12.5px;color:var(--ink3);margin-top:10px}
+  details summary{cursor:pointer;color:var(--deep);font-weight:500;font-size:13.5px}
+  .steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--hair)}
+  .steps li{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:start;padding:11px 0;border-bottom:1px solid var(--hair)}
+  .steps .dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:500 11px/1 "IBM Plex Mono",monospace;background:rgba(0,0,0,.05);color:var(--ink3);margin-top:1px}
+  .steps li.run .dot{background:var(--soft);color:var(--deep);animation:pulse 1.2s ease-in-out infinite}
+  .steps li.ok .dot{background:var(--brand);color:#fff}
+  .steps li.err .dot{background:var(--accent);color:#fff}
+  @keyframes pulse{50%{box-shadow:0 0 0 5px var(--soft)}}
+  .steps .t{font-weight:500}.steps .d{font-size:12.5px;color:var(--ink3)}
+  .steps .time{font:400 11.5px/1.8 "IBM Plex Mono",monospace;color:var(--ink3)}
+  .err-box{display:none;margin-top:14px;padding:14px 16px;border-radius:12px;background:var(--accent-soft);border:1px solid #FFDCCE;color:var(--accent-deep);font-size:13.5px}
+  .links{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .links a{display:block;text-decoration:none;color:var(--ink);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;transition:border-color .15s ease-out}
+  .links a:hover{border-color:var(--brand)}
+  .links a b{display:block;font:700 14.5px/1.3 Inter,"Noto Sans KR",sans-serif}
+  .links a span{font-size:12.5px;color:var(--ink3)}
+  .links a.main{background:var(--soft);border-color:var(--line)}
+  ul.flags{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink2)}
+  #progress,#result{display:none}
+  @media (max-width:720px){.grid{grid-template-columns:1fr 1fr}.links{grid-template-columns:1fr}header h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kick">JNU General English · Lecture Deck Builder</div>
+    <h1>강의 슬라이드 만들기</h1>
+    <p>단원과 교재 원문을 넣으면 제미나이가 슬라이드를 짜고, 구글 슬라이드(교수용·학생용)와 확인 퀴즈 폼을 드라이브에 저장합니다.</p>
+    <div class="flow"><span class="on">웹앱 입력</span><i>→</i><span>제미나이</span><i>→</i><span>구글 슬라이드</span><i>→</i><span>퀴즈 폼</span><i>→</i><span>드라이브 저장</span></div>
+  </header>
+
+  <!-- API 키 -->
+  <div class="card" id="keyCard">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>Gemini API 키</h2><p class="hint" style="margin:0">Google AI Studio(aistudio.google.com)에서 만든 키. 이 스크립트에만 저장됩니다.</p></div>
+      <span class="pill" id="keyPill">확인 중…</span>
+    </div>
+    <div class="row" id="keyForm" style="margin-top:12px;display:none">
+      <input id="apiKey" type="password" placeholder="API 키 붙여넣기" style="flex:1;min-width:220px" autocomplete="off">
+      <button onclick="saveKey()">저장</button>
+    </div>
+    <p class="note">무료 등급에서는 입력한 내용이 구글 서비스 개선에 쓰일 수 있습니다. 실제 학생 정보는 넣지 마세요.</p>
+  </div>
+
+  <!-- 입력 -->
+  <form class="card" id="f" onsubmit="start(event)">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <div><h2>1 · 단원과 교재 내용</h2><p class="hint" style="margin:0">교재 본문·대본·정답은 여기 넣은 글만 씁니다. 없는 것은 지어내지 않고 [원문 필요] 자리표시자로 둡니다.</p></div>
+      <button type="button" onclick="fillSample()">예시 채우기</button>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="w2"><label>과목</label>
+        <select name="course" onchange="paint(this.value)">
+          <option value="ELS1">영어듣기와 말하기 1</option>
+          <option value="ERW1">영어읽기와 쓰기 1</option>
+        </select></div>
+      <div><label>주차</label><input name="week" type="number" min="1" max="16" required placeholder="6"></div>
+      <div><label>차시</label><select name="session"><option>1</option><option>2</option></select></div>
+      <div class="w2"><label>차시 유형</label>
+        <select name="kind"><option>듣기 차시</option><option>말하기 차시</option><option>읽기 차시</option><option>쓰기 차시</option></select></div>
+      <div class="w2"><label>단원 <small>예: Unit 5 Places</small></label><input name="unit"></div>
+      <div class="w2"><label>절 제목 <small>교재에 적힌 그대로 — 덱 제목이 됩니다</small></label><input name="title" required></div>
+      <div><label>교재 쪽수</label><input name="pages" placeholder="50–51"></div>
+      <div><label>목표 장수 <small>45–60</small></label><input name="target" type="number" min="30" max="60" value="48"></div>
+      <div class="w4"><label>교재 이름</label><input name="book" placeholder="Skillful Listening & Speaking 1"></div>
+      <div class="w4"><label>교재 섹션 <small>줄마다 하나, 교재 표기 그대로 (비우면 원문에서 찾음)</small></label><textarea name="sections" rows="3"></textarea></div>
+      <div class="w4"><label>교재 원문 <small>본문·연습 문항을 붙여넣기 (필수)</small></label><textarea name="source" rows="10" required></textarea></div>
+      <div class="w2"><label>듣기 대본 <small>AUDIO SCRIPT — 있으면</small></label><textarea name="script" rows="8"></textarea></div>
+      <div class="w2"><label>정답 <small>교사용 지도서 ANSWERS — 있으면</small></label><textarea name="answers" rows="8"></textarea></div>
+      <div class="w2"><label>학습 목표 <small>메모로 충분</small></label><textarea name="goals" rows="3"></textarea></div>
+      <div class="w2"><label>지난 시간 <small>도입에서 잇는 말</small></label><textarea name="lastClass" rows="3"></textarea></div>
+      <div class="w4"><label>과제 안내 <small>요건 숫자·기한·평가 기준 — 비우면 자리표시자</small></label><textarea name="assignment" rows="3"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="go" type="submit">슬라이드·퀴즈 만들기</button>
+      <span class="note" style="margin:0">보통 4–8분. 제미나이가 붐비면 더 걸립니다. 창을 닫지 마세요.</span>
+    </div>
+  </form>
+
+  <!-- 진행 -->
+  <div class="card" id="progress">
+    <h2>2 · 진행 상황</h2>
+    <p class="hint" id="pHint">단계마다 결과 폴더의 작업기록에 저장되므로, 멈추면 그 단계부터 다시 할 수 있습니다.</p>
+    <ul class="steps" id="steps"></ul>
+    <div class="err-box" id="errBox"><div id="errMsg"></div>
+      <div class="row" style="margin-top:10px"><button onclick="resume()">이 단계 다시</button></div></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="card" id="result">
+    <h2>3 · 결과</h2>
+    <p class="hint" id="rHint"></p>
+    <div class="links" id="links"></div>
+    <div id="flagWrap" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<script>
+var COLORS={ELS1:['#00A56A','#00754C','#E6F7F0','#C7EBDC'],ERW1:['#3D5AFE','#2438C4','#EDF0FF','#DCE2FF']};
+function paint(c){var k=COLORS[c]||COLORS.ELS1,r=document.documentElement.style;r.setProperty('--brand',k[0]);r.setProperty('--deep',k[1]);r.setProperty('--soft',k[2]);r.setProperty('--line',k[3]);}
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function call(fn){var args=[].slice.call(arguments,1);return new Promise(function(ok,no){var r=google.script.run.withSuccessHandler(ok).withFailureHandler(no);r[fn].apply(r,args);});}
+
+/* ── API 키 ── */
+function showKey(s){var p=$('keyPill');p.textContent=s.hasKey?'저장됨':'키 없음';p.className='pill'+(s.hasKey?'':' no');$('keyForm').style.display=s.hasKey?'none':'flex';
+  if(s.hasKey&&!$('keyEdit')){var b=document.createElement('button');b.id='keyEdit';b.type='button';b.textContent='바꾸기';b.style.marginLeft='8px';b.onclick=function(){$('keyForm').style.display='flex'};p.after(b);}}
+function saveKey(){var v=$('apiKey').value;call('saveApiKey',v).then(function(s){$('apiKey').value='';showKey(s)}).catch(function(e){alert(e.message)})}
+call('getSettings').then(showKey).catch(function(){$('keyPill').textContent='확인 실패'});
+
+/* ── 진행 ── */
+var job={folderId:null,sections:[],at:0,t0:0};
+var STEPS=[];
+function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈',d:'제미나이'}];
+  job.sections.forEach(function(n,i){STEPS.push({id:'sec'+i,i:i,t:'섹션 '+(i+1)+' · '+n,d:'제미나이 — 해설·문항·정답'})});
+  STEPS.push({id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
+    {id:'build',t:'교수용 구글 슬라이드',d:'정답 장·강의 노트 포함'},
+    {id:'student',t:'학생용 사본',d:'정답 장과 강의 노트를 뺀 사본'},
+    {id:'quiz',t:'퀴즈 폼',d:'퀴즈 모드 · 정답·배점·해설'},
+    {id:'finish',t:'드라이브에 입력 기록 저장',d:'강의자료/ 폴더'});
+  $('steps').innerHTML=STEPS.map(function(s,k){return '<li id="st_'+s.id+'"><div class="dot">'+(k+1)+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+esc(s.d)+'</div></div><div class="time"></div></li>'}).join('');}
+function mark(id,cls,d,time){var li=$('st_'+id);if(!li)return;li.className=cls;if(d!=null)li.querySelector('.d').textContent=d;if(time!=null)li.querySelector('.time').textContent=time;}
+function secs(t){var s=Math.round((Date.now()-t)/1000);return s<60?s+'초':Math.floor(s/60)+'분 '+(s%60)+'초'}
+
+function collect(){var o={};[].forEach.call($('f').elements,function(el){if(el.name)o[el.name]=el.value});return o}
+
+function start(e){e.preventDefault();
+  $('go').disabled=true;$('progress').style.display='block';$('result').style.display='none';$('errBox').style.display='none';
+  job={folderId:null,sections:[],at:0,input:collect()};
+  STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈',d:'제미나이'}];
+  $('steps').innerHTML='<li id="st_start"><div class="dot">1</div><div><div class="t">폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈</div><div class="d">제미나이</div></div><div class="time"></div></li>';
+  $('progress').scrollIntoView({behavior:'smooth'});
+  loop();}
+
+function runStep(s){
+  if(s.id==='start') return call('step1_start',job.input).then(function(r){job.folderId=r.folderId;job.folderUrl=r.folderUrl;job.sections=r.sections;plan();
+    return '「'+r.title+'」 섹션 '+r.sections.length+'개 · 퀴즈 '+r.quiz+'문항 · '+r.model;});
+  if(s.i!=null) return call('step2_section',job.folderId,s.i).then(function(r){return r.count+'장 분량 · '+r.model});
+  if(s.id==='assemble') return call('step3_assemble',job.folderId).then(function(r){job.flags=r.flags;return '전체 '+r.total+'장 · 문항 '+r.questions+'개(정답 장 '+r.answers+'장) · 경고 '+r.flags.length+'건'});
+  if(s.id==='build') return call('step4_build',job.folderId).then(function(r){return r.total+'장 완성'});
+  if(s.id==='student') return call('step5_student',job.folderId).then(function(r){return r.total+'장 (정답 장 '+r.removed+'장 뺌)'});
+  if(s.id==='quiz') return call('step6_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.points+'점 만점'});
+  if(s.id==='finish') return call('step7_finish',job.folderId).then(function(r){job.result=r;return r.folderName});}
+
+function loop(){
+  var s=STEPS[job.at];
+  if(!s){done();return}
+  var t=Date.now();mark(s.id,'run',null,'');
+  var tick=setInterval(function(){mark(s.id,'run',null,secs(t))},1000);
+  runStep(s).then(function(msg){clearInterval(tick);mark(s.id,'ok',msg,secs(t));job.at++;loop();})
+  .catch(function(err){clearInterval(tick);mark(s.id,'err',null,secs(t));
+    $('errMsg').innerHTML='<b>멈췄습니다.</b> '+esc(err&&err.message||err);$('errBox').style.display='block';$('go').disabled=false;});}
+function resume(){$('errBox').style.display='none';$('go').disabled=true;if(!job.folderId){job.at=0}loop();}
+
+function done(){$('go').disabled=false;var r=job.result;$('result').style.display='block';
+  $('rHint').textContent='드라이브 강의자료/'+r.folderName+' 폴더에 모두 저장했습니다. 교수용 '+r.total+'장.';
+  var L=[[r.teacherUrl,'교수용 슬라이드','정답 장 · 강의 노트 포함',1],[r.studentUrl,'학생용 슬라이드','정답 장 · 노트 제외 — JNUclass 배포용'],
+    [r.formUrl,'퀴즈 폼 (학생용 링크)','응답 화면'],[r.formEditUrl,'퀴즈 폼 (편집)','문항·정답·배점 확인'],
+    [r.folderUrl,'드라이브 폴더','강의자료/'+r.folderName],[r.recordUrl,'입력 기록','입력 원문·검증 결과·사용 모델']];
+  $('links').innerHTML=L.map(function(x){return '<a class="'+(x[3]?'main':'')+'" href="'+esc(x[0])+'"><b>'+esc(x[1])+' ↗</b><span>'+esc(x[2])+'</span></a>'}).join('');
+  $('flagWrap').innerHTML=r.flags.length?'<details open><summary>검증 경고 '+r.flags.length+'건 — 슬라이드에서 확인할 곳</summary><ul class="flags">'+r.flags.map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul></details>'
+    :'<p class="note">검증 경고 없음 — 대본·정답·퀴즈 근거가 모두 원문에서 확인되었습니다.</p>';
+  $('result').scrollIntoView({behavior:'smooth'});}
+
+/* ── 예시 (직접 만든 글 — 실제 교재 아님) ── */
+function fillSample(){var f=$('f').elements;var S=<?!= JSON.stringify(sample_()) ?>;
+  Object.keys(S).forEach(function(k){if(f[k])f[k].value=S[k]});paint(S.course);}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+/**
+ * 화면의 [예시 채우기] 내용 — 시연용으로 직접 만든 글이다 (실제 교재 지면이 아님).
+ * 저작권 문제를 피하려고 교재 형식(Vocabulary · Before You Listen · Global/Close Listening)만 흉내 냈다.
+ */
+function sample_() {
+  return {
+    course: 'ELS1', week: '6', session: '1', kind: '듣기 차시',
+    unit: 'Unit 5 Places', title: 'A Walk on the Olle Trail', pages: '50–51', target: '48',
+    book: '시연용 예시 교재 (직접 만든 글)',
+    sections: ['Vocabulary', 'Before You Listen', 'Global Listening', 'Close Listening'].join('\n'),
+    source: [
+      'UNIT 5  PLACES',
+      'LISTENING 1  A Walk on the Olle Trail',
+      '',
+      'VOCABULARY',
+      'Match each word with its meaning.',
+      '1. trail     2. coast     3. flat     4. rocky',
+      'a. without hills; level',
+      'b. a path for walking in the countryside',
+      'c. covered with many stones',
+      'd. the land next to the sea',
+      '',
+      'A  BEFORE YOU LISTEN',
+      'Discuss these questions with a partner.',
+      '1. Do you like walking? Where do you usually walk?',
+      '2. Have you ever walked on an Olle trail? Which route was it?',
+      '',
+      'B  GLOBAL LISTENING',
+      'Listen to the conversation between a tour guide and Mina. What is the main topic?',
+      'a. a fishing village',
+      'b. a walking tour on the coast',
+      'c. a famous restaurant',
+      '',
+      'C  CLOSE LISTENING',
+      'Listen again. Write T (true) or F (false).',
+      '1. The walk takes about five hours.',
+      '2. They have lunch in a big city.',
+      '3. Most of the path is flat.',
+      '4. There are many shops on the trail.',
+    ].join('\n'),
+    script: [
+      'Guide: Good morning, everyone, and welcome to Olle Trail Route 7. Today\'s walk is about fifteen kilometers, so it takes around five hours.',
+      'Mina: Five hours? That\'s a long walk. Do we stop for lunch?',
+      'Guide: Yes, we do. We stop at a small fishing village at about noon. The restaurant there serves fresh abalone porridge.',
+      'Mina: Sounds great. What\'s special about this route?',
+      'Guide: Well, it follows the coast, so you can see the sea almost all the time. On a clear day, you can also see Beomseom Island.',
+      'Mina: Is the path difficult?',
+      'Guide: Not really. Most of it is flat, but some parts are rocky, so please wear good shoes. And remember to bring water. There aren\'t many shops on the trail.',
+      'Mina: OK. One more question. Can we take photos?',
+      'Guide: Of course! The best spot is Oedolgae Rock. Everybody stops there for a picture.',
+    ].join('\n'),
+    answers: [
+      'VOCABULARY: 1 b  2 d  3 a  4 c',
+      'B GLOBAL LISTENING: b (a walking tour on the coast)',
+      'C CLOSE LISTENING: 1 T  2 F (They have lunch in a small fishing village.)  3 T  4 F (There aren\'t many shops on the trail.)',
+    ].join('\n'),
+    goals: '장소를 소개하는 대화에서 큰 주제(main topic)를 잡는다 / 세부 정보(시간·장소·조건)를 듣고 참·거짓을 가린다 / trail, coast, flat, rocky로 길을 묘사한다',
+    lastClass: '지난 시간에는 자기소개와 출신지 묻고 답하기를 연습했다.',
+    assignment: 'Speaking Task 3: 내가 좋아하는 제주(또는 고향)의 장소 한 곳을 소개하는 1분 발표. 대본 120–150단어 + 영상 제출. 기한 10월 16일(금) 23:59. 평가: 내용 4 · 구성 3 · 표현(오늘 낱말 2개 이상) 2 · 완성도 1.',
+  };
+}
