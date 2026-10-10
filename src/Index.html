@@ -148,6 +148,14 @@
     <div class="warn" id="warn"></div>
   </form>
 
+  <!-- 이전 결과 -->
+  <div class="card" id="jobsCard">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>이전 결과 다시 열기</h2><p class="hint" style="margin:0">이미 만든 자료를 열어 영상을 넣거나 HTML 덱을 다시 만듭니다. 제미나이 글 생성은 다시 하지 않습니다.</p></div>
+      <div class="row"><select id="jobSel" style="min-width:280px"><option value="">불러오는 중…</option></select><button type="button" onclick="openOld()">열기</button></div>
+    </div>
+  </div>
+
   <!-- 진행 -->
   <div class="card" id="progress">
     <h2>2 · 진행 상황</h2>
@@ -174,7 +182,7 @@
         <div class="w4"><label>개요 영상 링크</label><input id="rvOverview" placeholder="드라이브 영상 또는 유튜브 링크"></div>
         <div class="w4"><label>섹션 복습 영상 <small>줄마다, 섹션 순서대로</small></label><textarea id="rvSections" rows="2"></textarea></div>
       </div>
-      <div class="row" style="margin-top:10px"><button class="primary" type="button" id="relinkBtn" onclick="relink()">영상 넣고 다시 만들기</button>
+      <div class="row" style="margin-top:10px"><button class="primary" type="button" id="relinkBtn" onclick="relink()">영상 넣고 다시 만들기</button><button type="button" onclick="relink()">HTML 덱·슬라이드만 다시 만들기</button>
         <span class="note" style="margin:0">제미나이 글 생성은 다시 하지 않습니다 · 약 1–2분 · 교수용·학생용 슬라이드와 퀴즈 폼을 새로 만듭니다</span></div>
       <p class="note">학생에게 나눠 줄 때는 드라이브의 영상·음성 파일(또는 결과 폴더)을 “링크가 있는 모든 사용자 — 보기”로 공유해야 학생 화면에서 재생됩니다.</p>
     </div>
@@ -215,6 +223,7 @@ function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 �
     {id:'build',t:'교수용 구글 슬라이드',d:'정답 장·강의 노트 포함'},
     {id:'student',t:'학생용 사본',d:'정답 장과 강의 노트를 뺀 사본'},
     {id:'quiz',t:'퀴즈 폼',d:'퀴즈 모드 · 정답·배점·해설'},
+    {id:'html',t:'HTML 덱',d:'오디오·영상 자동 삽입 · 슬라이드 안 채점 · 학생 모드 (Claude 덱과 같은 모양)'},
     {id:'finish',t:'드라이브에 입력 기록 저장',d:'강의자료/ 폴더'});
   $('steps').innerHTML=STEPS.map(function(s,k){return '<li id="st_'+s.id+'"><div class="dot">'+(k+1)+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+esc(s.d)+'</div></div><div class="time"></div></li>'}).join('');}
 function mark(id,cls,d,time){var li=$('st_'+id);if(!li)return;li.className=cls;if(d!=null)li.querySelector('.d').textContent=d;if(time!=null)li.querySelector('.time').textContent=time;}
@@ -248,6 +257,7 @@ function runStep(s){
   if(s.id==='build') return call('step4_build',job.folderId).then(function(r){return r.total+'장 완성'+(r.images?' · 지면 사진 '+r.images+'장':'')});
   if(s.id==='student') return call('step5_student',job.folderId).then(function(r){return r.total+'장 (정답 장 '+r.removed+'장 뺌)'});
   if(s.id==='quiz') return call('step6_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.points+'점 만점'});
+  if(s.id==='html') return call('step6b_html',job.folderId).then(function(r){return r.slides+'장 · '+r.mb+'MB · 음원 '+r.audio+'개'+(r.notes.length?' · '+r.notes[0]:'')});
   if(s.id==='finish') return call('step7_finish',job.folderId).then(function(r){job.result=r;return r.folderName});}
 
 function fail(err){$('errMsg').innerHTML='<b>멈췄습니다.</b> '+esc(err&&err.message||err);$('errBox').style.display='block';$('go').disabled=false;}
@@ -283,7 +293,8 @@ function resume(){$('errBox').style.display='none';$('go').disabled=true;loop();
 
 function done(){$('go').disabled=false;var r=job.result;$('result').style.display='block';
   $('rHint').textContent='드라이브 강의자료/'+r.folderName+' 폴더에 모두 저장했습니다. 교수용 '+r.total+'장.';
-  var L=[[r.teacherUrl,'교수용 슬라이드','정답 장 · 강의 노트 포함',1],[r.studentUrl,'학생용 슬라이드','정답 장 · 노트 제외 — JNUclass 배포용'],
+  var L=[[r.htmlView,'HTML 덱 열기 (교수용)','오디오·영상·채점 · N 노트 · S 학생 모드',1],[r.htmlStudentView,'HTML 덱 열기 (학생용)','학생 모드로 열림 — 파일은 드라이브 폴더에'],
+    [r.teacherUrl,'교수용 슬라이드','정답 장 · 강의 노트 포함',1],[r.studentUrl,'학생용 슬라이드','정답 장 · 노트 제외 — JNUclass 배포용'],
     [r.formUrl,'퀴즈 폼 (학생용 링크)','응답 화면'],[r.formEditUrl,'퀴즈 폼 (편집)','문항·정답·배점 확인'],
     [r.folderUrl,'드라이브 폴더','강의자료/'+r.folderName],[r.recordUrl,'입력 기록','입력 원문·검증 결과·사용 모델']];
   $('links').innerHTML=L.map(function(x){return '<a class="'+(x[3]?'main':'')+'" href="'+esc(x[0])+'"><b>'+esc(x[1])+' ↗</b><span>'+esc(x[2])+'</span></a>'}).join('');
@@ -300,6 +311,18 @@ function relink(){if(!job.folderId)return;
     STEPS.slice(k).forEach(function(s){mark(s.id,'',null,'')});
     $('result').style.display='none';$('progress').scrollIntoView({behavior:'smooth'});$('go').disabled=true;loop();})
   .catch(function(e){$('relinkBtn').disabled=false;alert(e&&e.message||e)});}
+
+/* ── 이전 결과 ── */
+call('listJobs').then(function(list){$('jobSel').innerHTML=list.length?list.map(function(j){return '<option value="'+j.id+'">'+esc(j.name)+' · '+j.date+'</option>'}).join(''):'<option value="">아직 없습니다</option>'}).catch(function(){$('jobSel').innerHTML='<option value="">불러오지 못했습니다</option>'});
+function openOld(){var id=$('jobSel').value;if(!id)return;
+  call('openJob',id).then(function(j){job={folderId:j.folderId,folderUrl:j.folderUrl,sections:j.sections,at:0};plan();
+    var k=STEPS.map(function(s){return s.id}).indexOf('assemble');
+    STEPS.slice(0,k).forEach(function(s){s.done=true;mark(s.id,'ok','이전 결과','')});job.at=k;
+    var f=$('f').elements;f.videoOverview.value=j.videoOverview;f.videoSections.value=j.videoSections;
+    $('progress').style.display='block';
+    if(j.result){job.result=j.result;done();}
+    else{$('result').style.display='none';$('errMsg').innerHTML='<b>이어서 만들 수 있습니다.</b> 조립 단계부터 다시 합니다.';$('errBox').style.display='block';}
+  }).catch(function(e){alert(e&&e.message||e)});}
 
 /* ── 교재 파일 → 원문 ── */
 var IMAGES=IMAGES||[], READ=READ||{}; /* 이미 읽은 파일은 다시 누를 때 건너뛴다 (칸에 두 번 들어가지 않게) */

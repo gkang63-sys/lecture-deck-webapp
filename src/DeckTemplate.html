@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%%TITLE%%</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- 디자인·스크립트: 강계유 강사의 english-lecture-deck 6주차 덱에서 그대로 가져옴 -->
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   1. DESIGN TOKENS — 이 블록만 고치면 덱 전체 인상이 바뀝니다
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  /* Brand — 과목별로 --brand 계열만 교체 */
+  --brand:        #00A56A;   /* 주 강조: 눈썹줄, 번호, 밑줄, 링크 */
+  --brand-deep:   #00754C;   /* 진한 변주: 표지 배경, 섹션 표지 */
+  --brand-soft:   #E6F7F0;   /* 연한 배경: 카드, 칩, 하이라이트 */
+  --accent:       #FF6E40;   /* 보조 강조: 정답, 주의, 과제 */
+  --accent-soft:  #FFF0EA;
+
+  /* Ink & surface */
+  --ink:          #14161A;   /* 제목·영어 본문 */
+  --ink-2:        #454B55;   /* 한국어 해설 */
+  --ink-3:        #838A96;   /* 눈썹줄·푸터·캡션 */
+  --line:         #E5E8EE;
+  --surface:      #FFFFFF;
+  --surface-2:    #F6F7F9;
+  --page-bg:      #DFE3E9;
+
+  /* Type */
+  --font-en: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-ko: "Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif;
+
+  /* Rhythm */
+  --pad-x: 68px;
+  --pad-t: 44px;
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-pill: 999px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. STAGE — 1280×720 슬라이드를 화면에 꽉 맞춰 축소
+   ═══════════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--page-bg);
+  font-family:var(--font-ko);
+  color:var(--ink);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#stage{position:fixed;inset:0;display:grid;place-items:center}
+#deck{width:1280px;height:720px;position:relative;transform-origin:center center}
+
+.slide{
+  position:absolute;inset:0;
+  background:var(--surface);
+  padding:var(--pad-t) var(--pad-x) 0;
+  display:none;
+  overflow:hidden;
+}
+.slide.is-on{display:block}
+
+/* ── 공통 헤더 ── */
+.eyebrow{
+  font-family:var(--font-en);
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand);
+  display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+}
+.eyebrow .page-ref{
+  font-family:var(--font-ko);
+  letter-spacing:0;text-transform:none;font-size:12px;
+  color:var(--ink-3);white-space:nowrap;
+}
+.h-title{
+  font-family:var(--font-en);
+  font-size:33px;font-weight:800;line-height:1.22;letter-spacing:-.015em;
+  color:var(--ink);margin-top:10px;
+}
+.h-title.ko{font-family:var(--font-ko);font-weight:700;letter-spacing:-.02em}
+.h-sub{
+  font-size:16px;font-weight:500;color:var(--ink-3);
+  margin-top:7px;line-height:1.5;
+}
+.rule{height:3px;width:44px;background:var(--brand);border-radius:2px;margin-top:16px}
+
+/* ── 본문 영역 ── */
+.body{margin-top:24px;height:474px;overflow:hidden}
+.body.tall{height:512px;margin-top:14px}
+/* 내용이 짧을 때 세로 가운데로 — 아래 여백이 뜨는 것을 막습니다 */
+.body.mid{display:flex;flex-direction:column;justify-content:center}
+
+/* ── 영어 / 한국어 짝 ── */
+.pair{margin-bottom:17px}
+.en{
+  font-family:var(--font-en);
+  font-size:18.5px;line-height:1.52;font-weight:400;color:var(--ink);
+  letter-spacing:-.005em;
+}
+.ko{
+  font-family:var(--font-ko);
+  font-size:15px;line-height:1.72;font-weight:400;color:var(--ink-2);
+  margin-top:6px;
+}
+.en b,.ko b{font-weight:700;color:var(--brand-deep)}
+.en em,.ko em{font-style:normal;background:linear-gradient(transparent 62%,var(--brand-soft) 62%);font-weight:600}
+.term{font-family:var(--font-en);font-weight:600;color:var(--brand-deep)}
+
+/* ── 푸터 ── */
+.foot{
+  position:absolute;left:var(--pad-x);right:var(--pad-x);bottom:22px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--ink-3);
+  border-top:1px solid var(--line);padding-top:9px;
+}
+.foot .n{font-family:var(--font-en);font-weight:600;letter-spacing:.02em}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. SLIDE TYPES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ① 표지 --------------------------------------------------- */
+.s-title{
+  background:linear-gradient(135deg,var(--brand-deep) 0%,var(--brand) 62%,#2FD39B 100%);
+  color:#fff;padding:0;
+}
+.s-title .inner{position:absolute;left:var(--pad-x);right:var(--pad-x);top:154px}
+.s-title .kicker{
+  font-family:var(--font-en);font-size:12px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.72);
+}
+.s-title .kicker-ko{font-family:var(--font-ko);font-size:14px;color:rgba(255,255,255,.8);margin-top:8px;letter-spacing:-.01em}
+.s-title h1{
+  font-family:var(--font-en);font-size:60px;font-weight:800;line-height:1.08;
+  letter-spacing:-.03em;margin-top:22px;
+}
+.s-title .h1-ko{font-family:var(--font-ko);font-size:23px;font-weight:500;color:rgba(255,255,255,.86);margin-top:16px}
+.s-title .meta{
+  margin-top:34px;padding-top:18px;border-top:1px solid rgba(255,255,255,.28);
+  font-size:13px;color:rgba(255,255,255,.78);line-height:1.9;max-width:820px;
+}
+.s-title .badge{
+  display:inline-block;padding:7px 15px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.16);font-family:var(--font-en);
+  font-size:12px;font-weight:600;letter-spacing:.04em;margin-top:4px;
+}
+.s-title .foot{color:rgba(255,255,255,.6);border-top-color:rgba(255,255,255,.22)}
+.s-title .orb{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.22),rgba(255,255,255,0) 68%);
+}
+
+/* ② 목표·흐름 ---------------------------------------------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+.col-h{
+  font-size:13px;font-weight:700;color:var(--brand-deep);
+  letter-spacing:-.01em;margin-bottom:13px;
+  display:flex;align-items:center;gap:8px;
+}
+.col-h::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.goal{display:flex;gap:12px;margin-bottom:13px;align-items:flex-start}
+.goal .num{
+  flex:0 0 22px;height:22px;border-radius:50%;background:var(--brand-soft);
+  color:var(--brand-deep);font-family:var(--font-en);font-size:11px;font-weight:700;
+  display:grid;place-items:center;margin-top:2px;
+}
+.goal .txt .g-en{font-family:var(--font-en);font-size:15px;font-weight:600;color:var(--ink);line-height:1.4}
+.goal .txt .g-ko{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.5}
+
+/* ③ 섹션 표지 ---------------------------------------------- */
+.s-divider{background:var(--brand-deep);color:#fff;padding:0}
+.s-divider .inner{position:absolute;left:var(--pad-x);right:var(--pad-x);top:246px;display:flex;gap:38px;align-items:flex-start}
+.s-divider .big{
+  font-family:var(--font-en);font-size:104px;font-weight:800;line-height:.86;
+  color:rgba(255,255,255,.26);letter-spacing:-.04em;
+}
+.s-divider .of{
+  font-family:var(--font-en);font-size:11px;font-weight:700;letter-spacing:.18em;
+  color:rgba(255,255,255,.62);text-transform:uppercase;
+}
+.s-divider h2{font-family:var(--font-en);font-size:42px;font-weight:800;letter-spacing:-.025em;margin-top:11px}
+.s-divider .d-ko{font-size:18px;color:rgba(255,255,255,.82);margin-top:11px;font-weight:500}
+.s-divider .d-ref{
+  display:inline-block;margin-top:20px;padding:6px 14px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.15);font-size:12.5px;color:rgba(255,255,255,.9);
+}
+.s-divider .foot{color:rgba(255,255,255,.5);border-top-color:rgba(255,255,255,.2)}
+
+/* ④ 교재 지면 ---------------------------------------------- */
+.page-frame{
+  height:412px;border:1px solid var(--line);border-radius:var(--r-lg);
+  background:var(--surface-2);overflow:hidden;
+  display:grid;place-items:center;margin-top:4px;
+}
+.page-frame img{width:100%;height:100%;object-fit:contain;display:block}
+.page-frame .placeholder{text-align:center;color:var(--ink-3);padding:24px}
+.page-frame .placeholder .big{font-family:var(--font-en);font-size:26px;font-weight:700;color:#B6BCC7}
+.page-frame .placeholder .small{font-size:13px;margin-top:9px}
+.page-cap{font-size:13.5px;color:var(--ink-2);margin-top:13px;line-height:1.6}
+
+/* ⑤ 카드 그리드 -------------------------------------------- */
+.cards{display:grid;gap:15px}
+.cards.c2{grid-template-columns:1fr 1fr}
+.cards.c3{grid-template-columns:repeat(3,1fr)}
+.card{
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:19px 20px;
+}
+.card.brand{background:var(--brand-soft);border-color:#C7EBDC}
+.card.warm{background:var(--accent-soft);border-color:#FFDCCE}
+.card .c-label{
+  font-family:var(--font-en);font-size:10.5px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--brand);margin-bottom:9px;
+}
+.card.warm .c-label{color:#D9490F}
+.card .c-en{font-family:var(--font-en);font-size:16px;font-weight:600;line-height:1.42;color:var(--ink)}
+.card .c-ko{font-size:13.5px;color:var(--ink-2);margin-top:7px;line-height:1.62}
+
+/* ⑥ 대비 표 ------------------------------------------------ */
+table.cmp{width:100%;border-collapse:collapse;font-size:14.5px}
+table.cmp th{
+  font-family:var(--font-en);font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--brand);text-align:left;
+  padding:0 14px 10px;border-bottom:2px solid var(--brand);
+}
+table.cmp td{
+  padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.55;
+}
+table.cmp td .t-en{font-family:var(--font-en);font-weight:500;color:var(--ink)}
+table.cmp td .t-ko{font-size:13px;color:var(--ink-2);margin-top:4px}
+
+/* ⑦ 문항 + 정답 -------------------------------------------- */
+.q{
+  border-left:3px solid var(--brand);padding:2px 0 2px 17px;margin-bottom:18px;
+}
+.q .q-en{font-family:var(--font-en);font-size:18px;font-weight:600;color:var(--ink);line-height:1.45}
+.q .q-ko{font-size:14px;color:var(--ink-2);margin-top:6px}
+.answer{
+  background:var(--accent-soft);border:1px solid #FFDCCE;border-radius:var(--r-lg);
+  padding:18px 20px;margin-top:6px;
+}
+.answer .a-label{
+  font-family:var(--font-en);font-size:10.5px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:#D9490F;margin-bottom:9px;
+}
+.answer .a-en{font-family:var(--font-en);font-size:16.5px;line-height:1.5;color:var(--ink)}
+.answer .a-ko{font-size:13.5px;color:var(--ink-2);margin-top:7px;line-height:1.62}
+
+/* ⑧ 표현 칩 ------------------------------------------------ */
+.chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
+.chip{
+  font-family:var(--font-en);font-size:14.5px;font-weight:500;
+  padding:9px 15px;border-radius:var(--r-pill);
+  background:var(--brand-soft);color:var(--brand-deep);border:1px solid #C7EBDC;
+}
+.chip.plain{background:var(--surface-2);color:var(--ink);border-color:var(--line)}
+
+/* ⑨ 대본 인용 ---------------------------------------------- */
+.script{
+  background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:20px 22px;font-family:var(--font-en);font-size:15.5px;line-height:1.72;color:var(--ink);
+}
+.script .spk{font-weight:700;color:var(--brand-deep);margin-right:7px}
+.script-ko{font-size:13.5px;color:var(--ink-2);line-height:1.7;margin-top:12px;padding:0 4px}
+
+/* ⑩ 마무리 ------------------------------------------------- */
+.s-close{background:var(--ink);color:#fff}
+.s-close .eyebrow{color:rgba(255,255,255,.6)}
+.s-close .h-title{color:#fff}
+.s-close .h-sub{color:rgba(255,255,255,.62)}
+.s-close .rule{background:#fff}
+.s-close .card{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
+.s-close .card .c-label{color:#6FE0B4}
+.s-close .card .c-en{color:#fff}
+.s-close .card .c-ko{color:rgba(255,255,255,.66)}
+.s-close .foot{color:rgba(255,255,255,.42);border-top-color:rgba(255,255,255,.16)}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. CHROME — 진행바 · 노트 · 인쇄
+   ═══════════════════════════════════════════════════════════════ */
+#bar{position:fixed;left:0;top:0;height:3px;background:var(--brand);z-index:50;transition:width .18s ease}
+#hud{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:9px;z-index:50;
+  font-family:var(--font-en);font-size:12px;color:#5B6270;
+  background:rgba(255,255,255,.86);border:1px solid #CDD3DC;border-radius:var(--r-pill);
+  padding:5px 13px;user-select:none;transition:opacity .5s ease;
+}
+#notes{
+  position:fixed;left:0;right:0;bottom:0;max-height:36vh;overflow:auto;z-index:60;
+  background:#12141A;color:#D7DBE3;padding:18px 26px;font-size:14px;line-height:1.7;
+  border-top:2px solid var(--brand);display:none;
+}
+#notes.on{display:block}
+#notes h4{font-family:var(--font-en);font-size:11px;letter-spacing:.14em;color:#6FE0B4;margin-bottom:9px}
+.notes-src{display:none}
+
+@media print{
+  @page{size:1280px 720px;margin:0}
+  body{background:#fff;overflow:visible}
+  #stage{position:static;display:block}
+  #deck{transform:none!important;width:1280px;height:auto}
+  .slide{position:relative;display:block!important;page-break-after:always;height:720px;inset:auto}
+  #bar,#hud,#notes{display:none!important}
+}
+/* ── 보정 1~4: 템플릿 결함 ── */
+.h-title.ko{font-size:33px;line-height:1.22;color:var(--ink);margin-top:10px}   /* .ko 15px가 제목을 덮어쓰던 문제 */
+.s-close .h-title.ko{color:#fff}
+.s-close .en{color:#fff}.s-close .ko{color:rgba(255,255,255,.66)}               /* 검은 배경에 검은 글씨 */
+.s-close .en b,.s-close .ko b{color:var(--brand-soft)}
+.s-close .eyebrow .page-ref{color:rgba(255,255,255,.5)}                       /* 검은 배경의 지면 참조가 검정 투명도로 사라지던 문제 */
+.page-frame{height:452px;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px}
+.page-frame img{max-width:100%;max-height:100%;width:auto;height:auto;border:1px solid #E0E4EA;border-radius:6px;background:#fff}
+.page-frame.split img{max-width:calc(50% - 6px)}                                /* 세로로 잘리던 지면 → 좌우 분할 */
+.chips + .pair,.script-ko + .pair,.cards + .pair,table.cmp + .pair{margin-top:18px}
+/* ── 단계 등장 (.st) ── */
+.st{opacity:0;transform:translateY(8px);transition:opacity .28s ease,transform .28s ease}
+.st.on{opacity:1;transform:none}
+.slide:has(.st:not(.on)) .foot .n::after{content:" ▸";color:var(--brand)}
+@media print{.st{opacity:1;transform:none}}
+/* ── 추가 부품 (5절) ── */
+.cards.c4{grid-template-columns:repeat(4,1fr)}
+.card .c-big{font-family:var(--font-en);font-size:40px;font-weight:800;letter-spacing:-.03em;color:var(--brand-deep);line-height:1;margin-bottom:8px}
+.cap{font-size:13px;color:var(--ink-3);margin-top:12px;line-height:1.6}
+table.sched{width:100%;border-collapse:collapse;font-size:13.5px}
+table.sched th{font-family:var(--font-en);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);text-align:left;padding:0 10px 8px;border-bottom:2px solid var(--brand)}
+table.sched td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+table.sched td:first-child{font-family:var(--font-en);font-weight:700;color:var(--brand-deep);white-space:nowrap}
+table.sched tr.hl td{background:var(--brand-soft)} table.sched tr.acc td{background:var(--accent-soft)}
+.glance{display:grid;grid-template-columns:150px 1fr;row-gap:9px;column-gap:18px;font-size:14.5px}
+.glance dt{font-family:var(--font-en);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);padding-top:3px}
+.glance dd{color:var(--ink);line-height:1.55}
+/* ── 디자인 언어 v2 (Figma 웹 시스템에서 빌림, 2026-09): 색은 신호로, 라벨은 모노로, 선은 헤어라인으로 ── */
+:root{
+  --font-mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  --ink-2:rgba(0,0,0,.74); --ink-3:rgba(0,0,0,.56);            /* 회색을 검정 투명도로 — 어떤 배경에서도 같은 관계 */
+  --line:rgba(0,0,0,.16); --surface-2:rgba(0,0,0,.04);
+  --t-fast:.15s; --t-base:.18s; --t-slow:.25s; --ease:ease-out;   /* 모션은 150–250ms ease-out */
+  --shadow-1:0 4px 32px rgba(0,0,0,.10); --shadow-2:0 24px 70px rgba(0,0,0,.10);
+}
+.eyebrow{font-family:var(--font-mono);font-weight:500;letter-spacing:.06em;color:var(--ink-3)}
+.eyebrow .page-ref{font-family:var(--font-mono);font-size:11px;letter-spacing:.02em}
+.foot,.foot .n,.s-divider .of,.s-title .kicker,.s-title .badge,.card .c-label,.answer .a-label,.col-h{font-family:var(--font-mono)}
+.foot{font-size:10.5px;letter-spacing:.02em}
+.card .c-label{color:var(--ink-3);font-weight:500;letter-spacing:.06em}
+.card.brand .c-label{color:var(--brand-deep)} .card.warm .c-label{color:#D9490F}
+.card{border-color:var(--line)}
+.h-title{letter-spacing:-.025em} .s-title h1{letter-spacing:-.035em}
+.st{transition:opacity var(--t-slow) var(--ease),transform var(--t-slow) var(--ease)}
+/* 헤어라인 행 + 배지 (5절) */
+.rows{border-top:1px solid var(--line)}
+.rows .row{display:grid;grid-template-columns:1fr 1.7fr;gap:22px;padding:13px 0;border-bottom:1px solid var(--line)}
+.rows .r-t{font-family:var(--font-en);font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--ink);line-height:1.4}
+.rows .r-t .ko{display:block;font-family:var(--font-ko);font-size:12.5px;font-weight:400;color:var(--ink-3);margin-top:3px;line-height:1.5}
+.rows .r-en{font-family:var(--font-en);font-size:15px;color:var(--ink);line-height:1.5}
+.rows .r-ko{font-size:13px;color:var(--ink-3);margin-top:4px;line-height:1.6}
+.badge{display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;padding:3px 8px;border-radius:var(--r-pill);background:var(--brand-soft);color:var(--brand-deep);vertical-align:middle;margin-left:8px}
+/* ── 인터랙티브 연습 (덱 안에서): → 가 채점이다 ── */
+:root{--brand-line:#C7EBDC}
+.ix .row{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.ix .row:last-child{border-bottom:0}
+.ix .idx{flex:0 0 22px;height:22px;border-radius:50%;background:var(--surface-2);color:var(--ink-3);font-family:var(--font-mono);font-size:11px;font-weight:500;display:grid;place-items:center;margin-top:3px}
+.ix .main{flex:1;min-width:0}
+.ix .q{font-family:var(--font-en);font-size:17px;line-height:1.5;color:var(--ink);border-left:0;padding:0;margin:0}
+.ix .q-ko{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.ix .q .qk{font-family:var(--font-ko);font-size:12.5px;font-weight:400;color:var(--ink-3);margin-left:10px}
+.ix .opts{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.opt{font-family:var(--font-en);font-size:14px;font-weight:600;padding:6px 13px;border-radius:8px;background:#fff;border:1px solid var(--line);color:var(--ink-2);cursor:pointer;transition:border-color var(--t-base) var(--ease),background var(--t-base) var(--ease),color var(--t-base) var(--ease)}
+.opt:hover{border-color:rgba(0,0,0,.4)}
+.opt.sel{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep)}
+.opt.ok{background:var(--brand);border-color:var(--brand);color:#fff}
+.opt.no{background:var(--accent-soft);border-color:#FFDCCE;color:#D9490F;text-decoration:line-through}
+input.gap{font-family:var(--font-en);font-size:16px;font-weight:600;color:var(--brand-deep);width:118px;padding:2px 8px;border:0;border-bottom:2px solid var(--brand-line);background:var(--brand-soft);border-radius:6px 6px 0 0;outline:none;text-align:center}
+input.gap:focus{border-bottom-color:var(--brand);background:#fff}
+input.gap.ok{background:var(--brand-soft);border-bottom-color:var(--brand)}
+input.gap.no{background:var(--accent-soft);border-bottom-color:var(--accent);color:#D9490F}
+.ix .stress-line{font-family:var(--font-en);font-size:17.5px;line-height:1.75;padding:3px 0;border-bottom:1px solid var(--line)}
+.ix .stress-line:last-child{border-bottom:0}
+.ix .stress-line .spk{font-family:var(--font-mono);font-size:12px;color:var(--brand-deep);margin-right:10px}
+.w{display:inline-block;padding:0 5px;border-radius:6px;cursor:pointer;border:1px solid transparent;user-select:none;transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}
+.w:hover{background:var(--surface-2)}
+.w.on{background:var(--brand-deep);color:#fff;font-weight:700}
+.w.hit{background:var(--brand);color:#fff;font-weight:700}
+.w.miss{background:#fff;color:var(--brand-deep);font-weight:700;border-color:var(--brand);border-style:dashed}
+.w.wrong{background:var(--accent-soft);color:#D9490F;border-color:#FFDCCE;text-decoration:line-through}
+.ix .pool{display:flex;gap:8px;flex-wrap:wrap;min-height:40px;margin-bottom:12px}
+.ix .bins{display:grid;grid-template-columns:repeat(var(--nb,2),1fr);gap:12px}
+.bin{border:2px dashed var(--line);border-radius:12px;padding:12px;min-height:92px;cursor:pointer;transition:border-color var(--t-base) var(--ease),background var(--t-base) var(--ease)}
+.bin.armed{border-color:var(--brand);background:var(--brand-soft)}
+.bin .bin-h{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.bin .pool{min-height:0;margin:0}
+.card-chip{font-family:var(--font-en);font-size:14px;font-weight:600;padding:7px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);cursor:pointer;transition:border-color var(--t-base) var(--ease)}
+.card-chip:hover{border-color:var(--brand)}
+.card-chip.picked{background:var(--brand-deep);color:#fff;border-color:var(--brand-deep)}
+.card-chip.ok{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep)}
+.card-chip.no{background:var(--accent-soft);border-color:#FFDCCE;color:#D9490F}
+.pair.lead{margin-bottom:5px}.pair.lead .en{font-size:17px;line-height:1.45}.pair.lead .ko{font-size:13.5px;margin-top:2px;line-height:1.6}   /* 연습 앞의 한마디 */
+.ix-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.ix-hint{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+.fb{font-size:13.5px;font-weight:600;color:var(--ink-3);margin-top:10px;min-height:20px}
+.fb.good{color:var(--brand-deep)} .fb.bad{color:#D9490F}
+.ix + .answer{margin-top:10px;padding:14px 18px}
+#score{display:none;position:fixed;right:18px;bottom:9px;z-index:50;font-family:var(--font-mono);font-size:12px;color:var(--brand-deep);background:var(--brand-soft);border:1px solid var(--brand-line);padding:5px 12px;border-radius:999px}
+body.student #score{display:block}
+body.student #notes{display:none!important}
+@media print{.opt.sel:not(.ok):not(.no){background:#fff;border-color:var(--line);color:var(--ink-2)} #score{display:none!important}}
+
+/* ── 텍스트 슬라이드 개선 v3 (2026-09-14) — 기획서 index.html의 색·부품을 빌림:
+   .kicker(브랜드 키커) · .tag(알약) · .quote(강조 문장) · .stats(숫자 타일) · .ticks(브랜드 네모 목록) · hero::after(부드러운 원) ── */
+:root{--accent-line:#FFDCCE;--accent-deep:#D9490F}
+.slide{isolation:isolate}
+.orb-soft{position:absolute;right:-190px;top:-170px;width:600px;height:600px;border-radius:50%;pointer-events:none;z-index:-1;
+  background:radial-gradient(circle at 34% 34%,var(--brand-soft),rgba(255,255,255,0) 66%)}
+.orb-soft.warm{background:radial-gradient(circle at 34% 34%,var(--accent-soft),rgba(255,255,255,0) 66%)}
+.orb-soft.low{top:auto;bottom:-260px;right:-160px}
+/* 브랜드 키커 — 본문 첫 줄 위 */
+.kick{font-family:var(--font-en);font-size:11px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--brand);margin-bottom:12px;display:flex;align-items:center;gap:9px}
+.kick::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.kick .ko{font-family:var(--font-ko);letter-spacing:0;text-transform:none;font-size:12.5px;color:var(--ink-3);font-weight:500;margin:0}
+/* 알약 태그 줄 */
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tag{font-family:var(--font-en);font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--line);color:var(--ink-2);line-height:1.2}
+.tag.b{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-deep)}
+.tag.a{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-deep)}
+.tag.k{font-family:var(--font-ko);font-weight:500}
+/* 강조 문장 — 기획서 .quote */
+.pair.key{border-left:3px solid var(--brand);padding:3px 0 3px 20px;margin:2px 0 20px}
+.pair.key .en{font-size:23px;font-weight:600;line-height:1.42;letter-spacing:-.015em;color:var(--ink)}
+.pair.key .en b{color:var(--brand-deep)}
+.pair.key .ko{font-size:15px;color:var(--ink-3);margin-top:7px}
+.pair.key.warm{border-left-color:var(--accent)} .pair.key.warm .en b{color:var(--accent-deep)}
+/* 번호 마커 — 기획서 .fstep .fn */
+.pairs-n{counter-reset:p}
+.pairs-n .pair{position:relative;padding-left:38px;counter-increment:p}
+.pairs-n .pair::before{content:"0" counter(p);position:absolute;left:0;top:6px;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--brand)}
+.pairs-n .pair::after{content:"";position:absolute;left:0;top:24px;width:22px;height:1px;background:var(--brand-line)}
+.pairs-n .pair.key{padding-left:20px} .pairs-n .pair.key::before,.pairs-n .pair.key::after{display:none}
+/* 2열 — 왼쪽 본문 + 오른쪽 포커스 패널 */
+.split2{display:grid;grid-template-columns:1fr 292px;gap:36px;align-items:start}
+.split2.wide{grid-template-columns:1fr 340px}
+.focus{background:var(--brand-soft);border:1px solid var(--brand-line);border-radius:var(--r-lg);padding:20px 22px 22px;position:relative;overflow:hidden}
+.focus::after{content:"";position:absolute;right:-70px;bottom:-90px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.7),rgba(255,255,255,0) 68%)}
+.focus>*{position:relative;z-index:1}
+.focus .f-label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-deep);margin-bottom:10px}
+.focus .f-big{font-family:var(--font-en);font-size:46px;font-weight:800;letter-spacing:-.035em;color:var(--brand-deep);line-height:1}
+.focus .f-big small{font-size:18px;font-weight:600;letter-spacing:-.01em;margin-left:4px;color:var(--brand-deep)}
+.focus .f-en{font-family:var(--font-en);font-size:16px;font-weight:600;color:var(--ink);margin-top:10px;line-height:1.42}
+.focus .f-ko{font-size:13px;color:var(--ink-2);margin-top:7px;line-height:1.62}
+.focus .f-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.focus .f-row .tag{background:#fff}
+.focus .f-rule{height:1px;background:var(--brand-line);margin:12px 0}
+.focus.warm{background:var(--accent-soft);border-color:var(--accent-line)}
+.focus.warm .f-label,.focus.warm .f-big,.focus.warm .f-big small{color:var(--accent-deep)}
+.focus.ink{background:var(--ink);border-color:var(--ink);color:#fff}
+.focus.ink .f-label{color:#6FE0B4} .focus.ink .f-big{color:#fff} .focus.ink .f-en{color:#fff} .focus.ink .f-ko{color:rgba(255,255,255,.66)}
+.focus.ink::after{background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.14),rgba(255,255,255,0) 68%)}
+/* 숫자 타일 — 기획서 .stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:20px}
+.stats.s4{grid-template-columns:repeat(4,1fr)}
+.stat{background:#fff;padding:18px 20px 17px}
+.stat .n{font-family:var(--font-en);font-size:32px;font-weight:800;letter-spacing:-.03em;color:var(--brand-deep);line-height:1}
+.stat .n small{font-size:14px;font-weight:600;letter-spacing:0;margin-left:3px}
+.stat .l{font-size:12.5px;color:var(--ink-3);margin-top:8px;line-height:1.45}
+.stat .l b{color:var(--ink);font-weight:600}
+.stat.a .n{color:var(--accent-deep)}
+/* 브랜드 네모 목록 — 기획서 ul.ticks */
+ul.ticks{list-style:none;margin:0 0 6px}
+ul.ticks li{position:relative;padding-left:26px;margin-bottom:11px;line-height:1.5}
+ul.ticks li::before{content:"";position:absolute;left:2px;top:9px;width:8px;height:8px;border-radius:2px;background:var(--brand)}
+ul.ticks.warn li::before{background:var(--accent);border-radius:50%}
+ul.ticks li .en{font-size:17.5px}
+ul.ticks li .ko{font-size:13.5px;margin-top:3px}
+/* 단계 흐름 — 기획서 .flow */
+.flow{display:grid;grid-template-columns:repeat(var(--nf,4),1fr);gap:12px}
+.fstep{border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 17px;background:#fff;position:relative}
+.fstep.on{border-color:var(--brand-line);background:var(--brand-soft)}
+.fstep .fn{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--brand);margin-bottom:8px}
+.fstep .ft{font-family:var(--font-en);font-size:15.5px;font-weight:700;line-height:1.35;color:var(--ink)}
+.fstep .fd{font-size:12.5px;color:var(--ink-2);margin-top:6px;line-height:1.55}
+/* 그라데이션 낱말 — 기획서 h1 .g (제목의 한 낱말에만) */
+.g{background:linear-gradient(95deg,var(--brand-deep),var(--brand) 55%,#2FD39B);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* 마무리 슬라이드에서의 태그·키커 */
+.s-close .tag{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.s-close .kick{color:#6FE0B4} .s-close .kick .ko{color:rgba(255,255,255,.55)}
+.s-close .pair.key{border-left-color:#6FE0B4} .s-close .pair.key .en b{color:#6FE0B4} .s-close .pair.key .ko{color:rgba(255,255,255,.66)}
+.s-close .orb-soft{background:radial-gradient(circle at 34% 34%,rgba(111,224,180,.18),rgba(255,255,255,0) 66%)}
+/* 본문 안 표·칩 뒤 간격 */
+.tags + .pair,.stats + .pair,.flow + .pair,ul.ticks + .pair{margin-top:4px}
+.split2 .pair:last-child{margin-bottom:0}
+@media print{.orb-soft{display:none}}
+
+
+/* ── 영상 슬라이드 (섹션 표지 다음 · 예습·복습 겸용, 플레이어 최대) ── */
+.vslide .h-title{font-size:30px;margin-top:8px}
+.vslide .body{height:auto;margin-top:12px;display:flex;justify-content:center}
+.vwrap{position:relative;width:974px;height:548px;border-radius:10px;overflow:hidden;background:#0F1512;box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.vwrap video{width:100%;height:100%;display:block;background:#000;outline:none}
+.vwrap .vposter{display:none;width:100%;height:100%;object-fit:cover}
+@media print{.vwrap video{display:none}.vwrap .vposter{display:block}}
+
+
+/* 모노 라벨 안의 한글은 Noto Sans KR로 (PDF에서 시스템 CJK 폰트로 빠지던 문제) */
+:root{--font-mono:"IBM Plex Mono","Noto Sans KR","SFMono-Regular",Menlo,Consolas,monospace}
+/* ── 4주차 추가 부품 (기획서 index.html에서 빌림): .quote · .timeline · .pill ── */
+.quote{border-left:3px solid var(--brand);padding:4px 0 4px 22px;margin:4px 0 16px;max-width:980px}
+.quote .q{font-family:var(--font-en);font-size:21px;font-weight:600;line-height:1.45;letter-spacing:-.015em;color:var(--ink)}
+.quote .q b{color:var(--brand-deep)}
+.quote .a{font-size:13.5px;color:var(--ink-3);margin-top:8px;line-height:1.6}
+.quote.warm{border-left-color:var(--accent)} .quote.warm .q b{color:var(--accent-deep)}
+.timeline{border-left:2px solid var(--line);padding-left:24px;margin-left:8px}
+.tl{position:relative;padding:7px 0}
+.tl::before{content:"";position:absolute;left:-31px;top:13px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--brand)}
+.tl.done::before{background:var(--brand)}
+.tl.acc::before{border-color:var(--accent);background:var(--accent)}
+.tl .tw2{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin-bottom:2px}
+.tl .tt{font-family:var(--font-en);font-size:15.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink);line-height:1.35}
+.tl .td{font-size:12.5px;color:var(--ink-2);margin-top:2px;line-height:1.5}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:var(--r-pill);margin-left:8px;vertical-align:middle;background:var(--brand-soft);color:var(--brand-deep)}
+.pill.now{background:var(--accent-soft);color:var(--accent-deep)}
+.page-frame .placeholder .big{color:var(--brand)}
+.page-frame .placeholder .small{max-width:520px;margin:9px auto 0;line-height:1.6}
+.script .rf{background:linear-gradient(transparent 60%,var(--accent-soft) 60%);border-bottom:1px dashed var(--accent);padding:0 1px}
+.focus .f-big.sm{font-size:34px;letter-spacing:-.02em}
+.ix .q .qk{white-space:nowrap}
+.cards.c3 .card .c-en{font-size:15.5px}
+/* ── 오디오 바 (TTS 대체 음원) ── */
+.aud{display:flex;align-items:center;gap:14px;margin:8px 0 12px;padding:6px 12px 6px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.aud audio{height:34px;width:430px;flex:0 0 auto}
+.aud .aud-l{font-family:var(--font-mono);font-size:11px;letter-spacing:.03em;color:var(--ink-3);line-height:1.4}
+.aud .aud-l em{font-style:normal;color:var(--accent-deep)}
+.page-frame.with-aud{height:392px}
+.body.tall > .aud{margin:4px 0 8px}   /* 연습·대본 슬라이드의 바는 여백을 줄여 정답 상자가 푸터에 닿지 않게 */
+.pair.lead + .aud{margin-top:2px}
+@media print{.aud{display:none}}
+/* ── 낭독 알약 (Professor voice) — 슬라이드마다 컨트롤 하나: 제목 아래 rule 줄 오른쪽 (정답은 상자를 연 뒤 같은 알약이 이어 읽는다) ── */
+.rule-row{position:relative;height:3px;margin-top:16px}
+.rule-row .rule{margin-top:0}
+.rule-row .nar{position:absolute;right:0;top:50%;transform:translateY(-50%)}
+.nar{position:relative;display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px 0 6px;border-radius:999px;border:1px solid var(--brand-line);background:var(--brand-soft);color:var(--brand-deep);font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;cursor:pointer;overflow:hidden;white-space:nowrap;transition:background var(--t-base) var(--ease),border-color var(--t-base) var(--ease)}
+.nar:hover{background:#fff;border-color:var(--brand)}
+.nar .nar-ic{width:16px;height:16px;border-radius:50%;background:var(--brand-deep);position:relative;flex:0 0 auto}
+.nar .nar-ic::before{content:"";position:absolute;left:6px;top:4px;border-style:solid;border-width:4px 0 4px 6px;border-color:transparent transparent transparent #fff}
+.nar.playing .nar-ic::before{left:5px;top:4.5px;width:2px;height:7px;border:0;background:#fff;box-shadow:4px 0 0 #fff}
+.nar .nar-l{font-weight:500}
+.nar .nar-d{color:var(--ink-3)}
+.nar .nar-bar{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--brand)}
+.nar .nar-a{display:none;color:var(--accent-deep)}
+.slide:has(.answer.on) .nar .nar-a,.slide:has(.answer:not(.st)) .nar .nar-a{display:inline}
+.nar.playing.ans .nar-bar{background:var(--accent)}
+.nar.playing.ans .nar-ic{background:var(--accent-deep)}
+.s-divider .d-row{display:flex;align-items:center;gap:10px;margin-top:20px}
+.s-divider .d-row .d-ref{margin-top:0}
+.rule-row.pg + .body.tall{height:493px}
+.rule-row.pg + .body.tall .page-frame{height:434px}   /* 지면 슬라이드에 알약 줄이 더해진 만큼 줄임 */
+.nar.light,.s-close .nar{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.32);color:#fff}
+.nar.light:hover,.s-close .nar:hover{background:rgba(255,255,255,.22);border-color:#fff}
+.nar.light .nar-ic,.s-close .nar .nar-ic{background:#fff}
+.nar.light .nar-ic::before,.s-close .nar .nar-ic::before{border-left-color:var(--brand-deep)}
+.nar.light.playing .nar-ic::before,.s-close .nar.playing .nar-ic::before{background:var(--brand-deep);box-shadow:4px 0 0 var(--brand-deep)}
+.nar.light .nar-d,.s-close .nar .nar-d{color:rgba(255,255,255,.72)}
+.nar.light .nar-bar,.s-close .nar .nar-bar{background:#fff}
+.s-title .nar{margin-left:10px;vertical-align:middle}
+@media print{.nar{display:none}}
+/* ── 영상 슬라이드 (섹션 요약 영상 · 표지·섹션 표지 바로 다음) ── */
+.vslide .h-title{font-size:30px;margin-top:8px}
+.vslide .body{height:auto;margin-top:12px;display:flex;justify-content:center}
+.vwrap{position:relative;width:974px;height:548px;border-radius:10px;overflow:hidden;background:#0F1512;box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.vwrap video{width:100%;height:100%;display:block;background:#000;outline:none}
+.vwrap .vposter{display:none;width:100%;height:100%;object-fit:cover}
+@media print{.vwrap video{display:none}.vwrap .vposter{display:block}}
+
+:root{--font-en:"Inter","Noto Sans KR",-apple-system,"Segoe UI",system-ui,sans-serif}
+
+
+.vwrap iframe{width:100%;height:100%;border:0;display:block}
+.ph-ttsnote{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="stage"><div id="deck">
+%%SLIDES%%
+</div></div>
+<script id="audio-store" type="application/json">%%STORE%%</script>
+<div id="hud">← → 이동 (▸ 표시는 정답 열기) · N 노트 · F 전체화면 · P 인쇄(PDF) · S 학생 모드</div>
+<div id="notes"><h4>SPEAKER NOTES · 강의 노트</h4><div id="notes-body"></div></div>
+<script>window.STUDENT_DEFAULT=%%STUDENT%%;</script>
+<script>
+(function(){
+  /* 오디오 바: 클릭이 슬라이드 넘김·정답 열기로 새지 않게 (document 캡처 단계 — deck의 캡처 리스너보다 먼저) */
+  document.addEventListener('click', function(e){ if(e.target && e.target.closest && e.target.closest('.aud')){ e.stopImmediatePropagation(); } }, true);
+  /* 플레이어에 초점이 있을 때: Space는 재생/정지, 화살표는 초점을 풀고 슬라이드 넘김에 맡긴다 */
+  addEventListener('keydown', function(e){ if(e.target && e.target.tagName==='AUDIO'){ if(e.key===' '){ e.stopImmediatePropagation(); return; }
+    if(['ArrowRight','ArrowLeft','PageDown','PageUp'].indexOf(e.key)>-1){ e.target.blur(); } } }, true);
+  /* 음원 데이터(문서 끝 audio-store)를 한 번만 읽어 각 플레이어의 src로 — 같은 트랙을 여러 슬라이드에서 써도 파일에는 한 번 */
+  var store={}; var st=document.getElementById('audio-store'); if(st){ try{ store=JSON.parse(st.textContent); }catch(e){} }
+  document.querySelectorAll('audio[data-aud]').forEach(function(a){ var d=store[a.dataset.aud]; if(!d) return;
+    fetch(d).then(function(r){return r.blob()}).then(function(b){ a.src=URL.createObjectURL(b); }).catch(function(){ a.src=d; });
+    a.addEventListener('play', function(){ narStopAll(); }); });
+  /* ── 낭독 알약: 슬라이드마다 하나. 본문(data-nar)을 읽고, 정답 상자(data-nar-ans)는 상자가 열린 뒤 이어 읽는다. L 키 = 알약 클릭 ── */
+  var narPool={}, pend=null, fresh={};   /* pend: 본문을 다 읽었지만 정답 상자가 아직 닫혀 있어 기다리는 알약 · fresh[key]: 슬라이드를 떠나 처음으로 되돌린 상태 */
+  function narAudio(key){ if(!key) return null; if(narPool[key]) return narPool[key]; var d=store[key]; if(!d) return null; var a=new Audio(d); a.preload='auto'; narPool[key]=a; return a; }
+  function revealed(btn){ var s=btn.closest('.slide'); var a=s&&s.querySelector('.answer'); return !!(a && (a.classList.contains('on') || !a.classList.contains('st'))); }
+  function setBar(btn,a){ var bar=btn.querySelector('.nar-bar'); if(bar) bar.style.width=(a&&a.duration?a.currentTime/a.duration*100:0)+'%'; }
+  function narStopAll(){ Object.keys(narPool).forEach(function(k){ narPool[k].pause(); });
+    document.querySelectorAll('.nar.playing').forEach(function(b){ b.classList.remove('playing','ans'); }); }
+  function narPlay(btn,key,isAns){ var a=narAudio(key); if(!a) return;
+    narStopAll(); document.querySelectorAll('audio').forEach(function(x){ x.pause(); }); pend=null;
+    if(a.ended||fresh[key]){ a.currentTime=0; fresh[key]=false; }
+    a.ontimeupdate=function(){ setBar(btn,a); };
+    a.onended=function(){ btn.classList.remove('playing','ans'); setBar(btn,null);
+      if(!isAns && btn.dataset.narAns){ if(revealed(btn)) narPlay(btn,btn.dataset.narAns,true); else pend=btn; } };
+    a.play().then(function(){ btn.classList.add('playing'); btn.classList.toggle('ans',!!isAns); }).catch(function(){}); }
+  function narToggle(btn){ var mk=btn.dataset.nar, ak=btn.dataset.narAns, a=narAudio(mk), b=narAudio(ak); if(!a) return;
+    if(!a.paused){ a.pause(); btn.classList.remove('playing','ans'); return; }
+    if(b && !b.paused){ b.pause(); btn.classList.remove('playing','ans'); return; }
+    if(b && !fresh[ak] && b.currentTime>0 && !b.ended){ narPlay(btn,ak,true); return; }        /* 정답 낭독 이어서 */
+    if(!fresh[mk] && a.currentTime>0 && !a.ended){ narPlay(btn,mk,false); return; }            /* 본문 낭독 이어서 */
+    if(b && !fresh[mk] && a.ended && !b.ended && revealed(btn)){ narPlay(btn,ak,true); return; } /* 본문은 끝났고 상자가 열렸다 → 정답 */
+    narPlay(btn,mk,false); }                                                      /* 처음부터 */
+  function narReset(s){ s.querySelectorAll('.nar').forEach(function(b){ [b.dataset.nar,b.dataset.narAns].forEach(function(k){ var a=k&&narPool[k]; if(a){ a.pause(); a.currentTime=0; fresh[k]=true; } });
+    b.classList.remove('playing','ans'); setBar(b,null); if(pend===b) pend=null; }); }
+  document.addEventListener('click', function(e){ var b=e.target&&e.target.closest&&e.target.closest('.nar'); if(b){ e.stopImmediatePropagation(); e.preventDefault(); narToggle(b); } }, true);
+  addEventListener('keydown', function(e){ if((e.key==='l'||e.key==='L') && !(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))){
+    var s=document.querySelector('.slide.is-on'); var b=s&&s.querySelector('.nar'); if(b){ narToggle(b); e.stopImmediatePropagation(); e.preventDefault(); } } }, true);
+  /* 정답 상자가 열리면(.answer.st → .on) 기다리던 알약이 정답을 이어 읽는다 */
+  var moA=new MutationObserver(function(ms){ ms.forEach(function(m){ var el=m.target; if(!el.classList.contains('on')) return;
+    var s=el.closest('.slide'); if(pend && s && s.contains(pend) && s.classList.contains('is-on')){ var b=pend; pend=null; narPlay(b,b.dataset.narAns,true); } }); });
+  document.querySelectorAll('.answer.st').forEach(function(el){ moA.observe(el,{attributes:true,attributeFilter:['class']}); });
+  /* 슬라이드를 떠나면 낭독을 멈추고 처음으로 되돌린다 */
+  var mo2=new MutationObserver(function(ms){ ms.forEach(function(m){ if(!m.target.classList.contains('is-on')) narReset(m.target); }); });
+  document.querySelectorAll('.slide').forEach(function(s){ if(s.querySelector('.nar')) mo2.observe(s,{attributes:true,attributeFilter:['class']}); });
+  window.__nar={pool:narPool, pending:function(){return pend;}};   /* 검증 스크립트용 */
+  /* 슬라이드를 떠나면 재생 멈춤 */
+  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ var s=m.target; if(!s.classList.contains('is-on')){ s.querySelectorAll('audio').forEach(function(a){ a.pause(); }); } }); });
+  document.querySelectorAll('.slide').forEach(function(s){ if(s.querySelector('audio')) mo.observe(s,{attributes:true,attributeFilter:['class']}); });
+})();
+</script>
+<script>
+(function(){
+  const deck=document.getElementById('deck');
+  const slides=[...deck.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'),hud=document.getElementById('hud');
+  const notes=document.getElementById('notes'),nbody=document.getElementById('notes-body');
+  let i=0,notesOn=false;
+
+  slides.forEach((s,k)=>{const n=s.querySelector('.foot .n');if(n)n.textContent=(k+1)+' / '+slides.length;});
+
+  function fit(){
+    const s=Math.min(innerWidth/1280,innerHeight/720);
+    deck.style.transform='scale('+s+')';
+  }
+  function show(k){
+    i=Math.max(0,Math.min(slides.length-1,k));
+    slides.forEach((s,x)=>s.classList.toggle('is-on',x===i));
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    const src=slides[i].querySelector('.notes-src');
+    nbody.textContent=src&&src.textContent.trim()?src.textContent.trim():'— 이 슬라이드에는 노트가 없습니다 —';
+    location.hash=i+1;
+  }
+  addEventListener('resize',fit);
+  addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(i+1);}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0);
+    else if(e.key==='End')show(slides.length-1);
+    else if(e.key==='n'||e.key==='N'){notesOn=!notesOn;notes.classList.toggle('on',notesOn);}
+    else if(e.key==='f'||e.key==='F'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+    else if(e.key==='p'||e.key==='P'){print();}
+  });
+  deck.addEventListener('click',e=>show(e.clientX<innerWidth/2?i-1:i+1));
+  fit();show(Math.max(0,(parseInt(location.hash.slice(1))||1)-1));
+  setTimeout(()=>hud.style.opacity=.25,3500);
+})();
+</script>
+<script>
+(function(){
+  var deck=document.getElementById('deck');
+  var $=function(q,r){return (r||document).querySelector(q)}, $$=function(q,r){return [].slice.call((r||document).querySelectorAll(q))};
+  function cur(){return deck.querySelector('.slide.is-on')}
+  function pend(s){return s?$$('.st:not(.on)',s):[]}
+  function reset(s){$$('.st.on',s).forEach(function(e){e.classList.remove('on')})}
+  /* ── 학생 모드 ── */
+  var student=(window.STUDENT_DEFAULT&&!/teacher/.test(location.search))||/student/.test(location.search);
+  var scoreEl=document.createElement('div'); scoreEl.id='score'; document.body.appendChild(scoreEl);
+  function setMode(on){student=on;document.body.classList.toggle('student',on);
+    var hud=document.getElementById('hud'); if(hud) hud.textContent=on?'학생 모드 · ← → 이동 · 고르고 → 로 채점 · S 교수 모드':'← → 이동 (▸ 표시는 정답 열기) · L 낭독 · N 노트 · F 전체화면 · P 인쇄(PDF) · S 학생 모드'; tally();}
+  /* ── 인터랙티브 연습 ── */
+  function norm(x){return (x||'').trim().toLowerCase().replace(/[’']/g,"'").replace(/\s+/g,' ')}
+  $$('[data-s]').forEach(function(sp){ sp._target=sp.dataset.s.toLowerCase().split(/\s+/);
+    sp.innerHTML=sp.textContent.split(/(\s+)/).map(function(t){ if(!t.trim()) return t;
+      return '<span class="w" data-b="'+t.replace(/[^A-Za-z']/g,'').toLowerCase()+'">'+t+'</span>'; }).join(''); });
+  function totalOf(ix){ var n=$$('.row[data-a]',ix).length + $$('.card-chip[data-bin]',ix).length;
+    $$('[data-s]',ix).forEach(function(sp){ $$('.w',sp).forEach(function(w){ if(sp._target.indexOf(w.dataset.b)>-1) n++; }); }); return n; }
+  var IX=$$('.ix'); var TOTAL=0; IX.forEach(function(ix){ix._total=totalOf(ix);TOTAL+=ix._total;});
+  function tally(){ var n=0,t=0; IX.forEach(function(ix){ if(ix._done){n+=ix._n;t+=ix._total;} }); scoreEl.textContent='SCORE '+n+' / '+TOTAL+(t<TOTAL?'  ·  '+IX.filter(function(i){return i._done}).length+'/'+IX.length+' 연습':''); }
+  function attempted(ix){ return !!( $('.opt.sel',ix) || $('.w.on',ix) || $$('input.gap',ix).some(function(i){return i.value.trim()}) || $('.bin .card-chip',ix) ); }
+  function grade(ix){ if(ix._done) return; var n=0,total=0,fb=$('.fb',ix);
+    $$('.row[data-a]',ix).forEach(function(r){ total++; var wants=r.dataset.a.split('|').map(norm), want=wants[0], inp=$('input.gap',r);
+      if(inp){ inp.classList.remove('ok','no'); if(wants.indexOf(norm(inp.value))>-1){inp.classList.add('ok');n++;} else {inp.classList.add('no'); inp.value=r.dataset.a.split('|')[0];} inp.readOnly=true; }
+      else { var sel=$('.opt.sel',r); $$('.opt',r).forEach(function(o){ o.classList.remove('ok','no'); if(wants.indexOf(norm(o.textContent))>-1) o.classList.add('ok'); });
+        if(sel&&wants.indexOf(norm(sel.textContent))>-1) n++; else if(sel) sel.classList.add('no'); } });
+    $$('.card-chip[data-bin]',ix).forEach(function(c){ total++; c.classList.remove('picked'); var host=c.closest('.bin');
+      if(host&&host.dataset.bin===c.dataset.bin){c.classList.add('ok');n++;} else c.classList.add('no'); });
+    $$('.bin',ix).forEach(function(b){b.classList.remove('armed')}); picked=null;
+    $$('[data-s]',ix).forEach(function(sp){ $$('.w',sp).forEach(function(w){ var isT=sp._target.indexOf(w.dataset.b)>-1, on=w.classList.contains('on'); w.classList.remove('on');
+      if(isT){ total++; if(on){w.classList.add('hit');n++;} else w.classList.add('miss'); } else if(on) w.classList.add('wrong'); }); });
+    ix._done=true; ix._n=n; var pct=total?Math.round(n/total*100):0;
+    if(fb){ fb.className='fb '+(pct>=80?'good':(pct>=50?'':'bad'));
+      fb.textContent=n+' / '+total+' 맞음 ('+pct+'%)'+($('[data-s]',ix)?' — 초록 맞힘 · 점선 놓침 · 주황 취소선 잘못 짚음':(pct===100?' — 전부 맞혔습니다.':' — 정답이 표시되었습니다.')); }
+    tally(); }
+  function next(){ var s=cur(); if(!s) return false; var ix=$('.ix',s);
+    if(ix&&!ix._done){ if(student&&!attempted(ix)&&!ix._nudged){ ix._nudged=true; var fb=$('.fb',ix); if(fb){fb.className='fb bad';fb.textContent='먼저 골라 보세요. 그다음 → 를 누르면 채점됩니다. (한 번 더 누르면 그냥 넘어갑니다)';} return true; } grade(ix); var p0=pend(s); if(p0.length){p0[0].classList.add('on');} return true; }
+    var p=pend(s); if(!p.length) return false; p[0].classList.add('on'); return true; }
+  var picked=null;
+  addEventListener('keydown',function(e){
+    var tag=e.target&&e.target.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'){ if(e.key==='Enter'){e.preventDefault();e.target.blur();next();} e.stopImmediatePropagation(); return; }
+    if(e.key==='s'||e.key==='S'){ setMode(!student); e.stopImmediatePropagation(); return; }
+    if(['ArrowRight','PageDown',' '].indexOf(e.key)>-1&&next()){ e.preventDefault(); e.stopImmediatePropagation(); }
+  },true);
+  deck.addEventListener('click',function(e){
+    var ix=e.target.closest?e.target.closest('.ix'):null;
+    if(ix){ var t=e.target;
+      var opt=t.closest('.opt'); if(opt&&!ix._done){ $$('.opt',opt.parentNode).forEach(function(o){o.classList.remove('sel')}); opt.classList.add('sel'); }
+      var w=t.closest('.w'); if(w&&!ix._done) w.classList.toggle('on');
+      var chip=t.closest('.card-chip'); var bin=t.closest('.bin');
+      if(chip&&!ix._done){ if(picked===chip){picked.classList.remove('picked');picked=null;} else { if(picked) picked.classList.remove('picked'); picked=chip; chip.classList.add('picked'); } $$('.bin',ix).forEach(function(b){b.classList.toggle('armed',!!picked)}); }
+      else if(bin&&picked&&!ix._done){ $('.pool',bin).appendChild(picked); picked.classList.remove('picked'); picked=null; $$('.bin',ix).forEach(function(b){b.classList.remove('armed')}); }
+      if(t.tagName!=='INPUT') e.preventDefault();
+      e.stopImmediatePropagation(); return; }
+    if(e.clientX>=innerWidth/2&&next()){ e.stopImmediatePropagation(); }
+  },true);
+  var mo=new MutationObserver(function(ms){ms.forEach(function(m){if(m.target.classList.contains('is-on'))reset(m.target)})});
+  $$('.slide',deck).forEach(function(sl){mo.observe(sl,{attributes:true,attributeFilter:['class']})});
+  setMode(student);
+})();
+</script>
+<script>
+(function(){
+  /* 영상 위 클릭은 재생/정지만 — 슬라이드 넘김으로 새지 않게 */
+  document.querySelectorAll('.vwrap').forEach(function(w){ w.addEventListener('click', function(e){ e.stopPropagation(); }); });
+  /* 영상에 초점이 있을 때의 키(Space·화살표)는 영상이 처리 */
+  addEventListener('keydown', function(e){ if(e.target && e.target.tagName==='VIDEO'){ e.stopImmediatePropagation(); } }, true);
+  /* 슬라이드를 떠나면 영상 멈춤 */
+  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ var s=m.target; if(!s.classList.contains('is-on')){ s.querySelectorAll('video').forEach(function(v){ v.pause(); }); } }); });
+  document.querySelectorAll('.vslide').forEach(function(s){ mo.observe(s,{attributes:true,attributeFilter:['class']}); });
+})();
+</script>
+<script>(function(){
+  document.querySelectorAll('.vwrap').forEach(function(w){ w.addEventListener('click', function(e){ e.stopPropagation(); }); });   /* 클릭이 슬라이드 넘김으로 새지 않게 (버블 단계 — 캡처에서 막으면 플레이어 컨트롤이 죽는다) */
+  addEventListener('keydown', function(e){ if(e.target && e.target.tagName==='VIDEO'){ e.stopImmediatePropagation(); } }, true);  /* 영상에 초점이 있으면 Space·화살표는 영상 것 */
+  document.querySelectorAll('video').forEach(function(v){ v.addEventListener('play', function(){ document.querySelectorAll('audio').forEach(function(a){ a.pause(); }); if(window.__nar){ Object.keys(window.__nar.pool).forEach(function(k){ window.__nar.pool[k].pause(); }); document.querySelectorAll('.nar.playing').forEach(function(b){ b.classList.remove('playing','ans'); }); } }); });
+  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ var s=m.target; if(!s.classList.contains('is-on')){ s.querySelectorAll('video').forEach(function(v){ v.pause(); }); } }); });
+  document.querySelectorAll('.vslide').forEach(function(s){ mo.observe(s,{attributes:true,attributeFilter:['class']}); });   /* 슬라이드를 떠나면 멈춤 */
+})();</script>
+</body>
+</html>

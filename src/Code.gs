@@ -11,6 +11,7 @@
  *  4 step4_build     교수용 구글 슬라이드
  *  5 step5_student   학생용 사본 (정답 장·강의 노트 제외)
  *  6 step6_quiz      구글 폼 퀴즈 (정답·배점·해설)
+ *    step6b_html     HTML 덱 (오디오·영상·슬라이드 안 채점 — Claude 덱과 같은 모양)
  *  7 step7_finish    입력 기록 문서
  * Apps Script는 한 번 호출에 6분까지만 돌기 때문에 단계를 나눴다. 단계 사이의 상태는
  * 결과 폴더의 작업기록.json에 두므로, 한 단계가 실패하면 그 단계부터 다시 부르면 된다.
@@ -29,7 +30,8 @@ const COURSES = {
 
 // ───────────────────────── 화면 ─────────────────────────
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.deck) return deckPage_(e.parameter.deck); // HTML 덱 미리보기
   return HtmlService.createTemplateFromFile('Index').evaluate()
     .setTitle('강의 슬라이드 만들기')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -279,6 +281,7 @@ function step7_finish(folderId) {
   p(`학생용 슬라이드 (정답 장 제외): ${st.studentUrl}`);
   p(`퀴즈 폼 (학생용 링크): ${st.formUrl}`);
   p(`퀴즈 폼 (편집): ${st.formEditUrl}`);
+  if (st.htmlUrl) p(`HTML 덱 (교수용·학생용, JNUclass에 올리는 파일): ${st.htmlUrl} · ${st.htmlStudentUrl}`);
   h('입력');
   [['과목', course.name], ['주차·차시', `Week ${inp.week}-${inp.session} · ${inp.kind}`], ['교재', `${inp.book} ${inp.pages}`],
     ['단원', inp.unit], ['절 제목', inp.title], ['섹션', inp.sections.join(' / ')], ['학습 목표', inp.goals],
@@ -300,7 +303,39 @@ function step7_finish(folderId) {
   return {
     folderUrl: st.folderUrl, folderName: st.folderName, teacherUrl: st.teacherUrl, studentUrl: st.studentUrl,
     formUrl: st.formUrl, formEditUrl: st.formEditUrl, recordUrl: st.recordUrl,
+    htmlView: st.htmlView, htmlStudentView: st.htmlStudentView, htmlUrl: st.htmlUrl, htmlStudentUrl: st.htmlStudentUrl,
     total: st.deck.length, flags: st.flags,
+  };
+}
+
+// ───────────────────────── 이전 결과 다시 열기 ─────────────────────────
+
+/** 강의자료/ 아래 최근 결과 폴더 (작업기록이 있는 것만) */
+function listJobs() {
+  const it = DriveApp.getRootFolder().getFoldersByName(ROOT_FOLDER);
+  if (!it.hasNext()) return [];
+  const out = [], fs = it.next().getFolders();
+  while (fs.hasNext()) {
+    const f = fs.next();
+    if (f.getName().charAt(0) === '_' || !f.getFilesByName(STATE_FILE).hasNext()) continue;
+    out.push({ id: f.getId(), name: f.getName(), t: f.getDateCreated().getTime() });
+  }
+  return out.sort((a, b) => b.t - a.t).slice(0, 15)
+    .map(x => ({ id: x.id, name: x.name, date: Utilities.formatDate(new Date(x.t), 'Asia/Seoul', 'MM-dd HH:mm') }));
+}
+
+function openJob(folderId) {
+  const st = loadState_(folderId);
+  if (!st.outline || !st.deck) throw new Error('이 폴더는 조립 단계까지 끝나지 않았습니다. 처음부터 다시 만들어 주세요.');
+  return {
+    folderId, folderUrl: st.folderUrl, folderName: st.folderName,
+    sections: st.outline.sections.map(s => s.name_en),
+    videoOverview: st.input.videoOverview || '', videoSections: st.input.videoSections || '',
+    result: st.finished ? {
+      folderUrl: st.folderUrl, folderName: st.folderName, teacherUrl: st.teacherUrl, studentUrl: st.studentUrl,
+      formUrl: st.formUrl, formEditUrl: st.formEditUrl, recordUrl: st.recordUrl, total: st.deck.length, flags: st.flags,
+      htmlView: st.htmlView, htmlStudentView: st.htmlStudentView, htmlUrl: st.htmlUrl, htmlStudentUrl: st.htmlStudentUrl,
+    } : null,
   };
 }
 
