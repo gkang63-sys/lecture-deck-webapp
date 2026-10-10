@@ -57,14 +57,23 @@ function extractFile(fileId, role) {
   let blob = file.getBlob();
   if (blob.getBytes().length > 15 * 1024 * 1024) throw new Error(`${name}: 15MB가 넘습니다. 쪽을 나눠 올려 주세요.`);
 
-  let res = callGemini_(readPrompt_(role), [blob]), r;
-  try { r = parseJson_(res.text); } catch (e) {
-    res = callGemini_(readPrompt_(role) + '\n주의: 올바른 JSON 하나만. 문자열 속 큰따옴표는 \\" 로.', [blob]);
-    r = parseJson_(res.text);
+  const started = Date.now();
+  const read = prompt => {
+    let res = callGemini_(prompt, [blob], started);
+    try { return { r: parseJson_(res.text), model: res.model }; } catch (e) {
+      res = callGemini_(prompt + '\n주의: 올바른 JSON 하나만. 문자열 속 큰따옴표는 \\" 로.', [blob], started);
+      return { r: parseJson_(res.text), model: res.model };
+    }
+  };
+  // 지도서는 빽빽해서 한 번에 다 받아 적으면 답이 끊긴다 → 대본·정답 먼저, 참고 상자는 따로 (실패해도 계속)
+  const first = read(readPrompt_(role));
+  const r = first.r;
+  if (role === 'guide') {
+    try { r.notes = read(readPrompt_('guideNotes')).r.notes; } catch (e) { r.notes = ''; r.warn = '참고 상자는 읽지 못했습니다: ' + e.message; }
   }
   const out = {
     source: str_(r.source), script: str_(r.script), answers: str_(r.answers), plan: str_(r.notes),
-    page: str_(r.page), model: res.model,
+    page: str_(r.page), model: first.model, warn: r.warn || '',
   };
   if (role === 'book' && /^image\//.test(mime)) out.image = { id: fileId, page: out.page, name };
   return out;
@@ -81,11 +90,18 @@ function readPrompt_(role) {
   ];
   if (role === 'guide') {
     return common.concat([
-      '이 지면은 교사용 지도서입니다. 다음 세 가지로 나눠 담으세요.',
+      '이 지면은 교사용 지도서입니다. 다음 두 가지만 담으세요 (다른 상자는 이번에는 빼세요).',
       '- script: AUDIO SCRIPT 전문. 트랙 번호(예: 1.04)와 화자 이름을 그대로.',
       '- answers: ANSWERS 상자 전문. 어느 연습(예: Global listening 2, Close listening 3)의 정답인지 앞에 붙여서.',
-      '- notes: Background information, Cultural awareness, Supporting critical thinking, Exam tip 등 참고 상자와 수업 진행 지시 전문.',
-      '다음 JSON으로만 답하세요: {"page": "보이는 쪽 번호들 (예: pp.20–23)", "script": "...", "answers": "...", "notes": "..."}',
+      '다음 JSON으로만 답하세요: {"page": "보이는 쪽 번호들 (예: pp.20–23)", "script": "...", "answers": "..."}',
+    ]).join('\n');
+  }
+  if (role === 'guideNotes') {
+    return common.concat([
+      '이 지면은 교사용 지도서입니다. AUDIO SCRIPT와 ANSWERS는 빼고, 나머지 참고 상자만 담으세요:',
+      'Background information, Cultural awareness, Supporting critical thinking, Exam tip, Extension activity 등. 상자 이름을 앞에 붙여서.',
+      '수업 진행 지시(번호 매긴 단계)는 한 단계에 한 줄로 짧게 옮겨도 됩니다.',
+      '다음 JSON으로만 답하세요: {"notes": "..."}',
     ]).join('\n');
   }
   if (role === 'plan') {

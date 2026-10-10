@@ -42,9 +42,19 @@ function callGemini_(prompt, blobs, startedAt) {
       const code = res.getResponseCode();
       let data = {};
       try { data = JSON.parse(res.getContentText()); } catch (e) { /* HTML 오류 페이지 */ }
-      if (code === 200 && data.candidates && data.candidates[0].content) {
-        const text = data.candidates[0].content.parts.filter(p => !p.thought).map(p => p.text || '').join('');
+      const cand = data.candidates && data.candidates[0];
+      const parts = cand && cand.content && cand.content.parts;
+      if (code === 200 && parts && parts.length) {
+        const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
         return { text, model };
+      }
+      if (code === 200) { // 답은 왔는데 글이 없음: 멈춘 이유를 알려 준다
+        const why = (cand && cand.finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '알 수 없음';
+        if (/RECITATION|COPYRIGHT/i.test(why)) throw new Error('제미나이가 저작권 보호(원문 그대로 옮기기 제한)로 답을 멈췄습니다. 이 부분은 직접 붙여넣어 주세요.');
+        if (/SAFETY|BLOCK|PROHIBITED/i.test(why)) throw new Error('제미나이가 안전 필터로 답을 멈췄습니다 (' + why + ').');
+        if (/MAX_TOKENS/i.test(why)) throw new Error('답이 너무 길어 중간에 끊겼습니다. 파일을 쪽별로 나눠 올려 주세요.');
+        lastError = `[${model}] 빈 답 (${why})`;
+        continue;
       }
       lastError = `[${model}] ` + ((data.error && data.error.message) || ('HTTP ' + code));
       if (code === 400 && thinking && /thinking/i.test(lastError)) { thinking = false; continue; }
