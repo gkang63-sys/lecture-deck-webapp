@@ -116,6 +116,7 @@ function step3_assemble(folderId) {
     .concat(...parts.map(p => p.flags), quiz.flags);
   st.models = st.models.filter(m => m.indexOf('뼈대') === 0).concat(parts.map(p => p.model), [quiz.model]);
   st.deck = assembleDeck_(st);
+  st.audioJobs = audioJobsFor_(st);
   const n = st.deck.length;
   if (n < 45 || n > 60) st.flags.push(`[분량] ${n}장 — 60분 차시 기준(45–60장)을 벗어났습니다. 원문 양에 따라 달라질 수 있습니다.`);
   saveState_(st);
@@ -123,8 +124,35 @@ function step3_assemble(folderId) {
     total: n,
     questions: st.deck.filter(s => s.kind === 'question').length,
     answers: st.deck.filter(s => s.answer).length,
+    videos: st.deck.filter(s => s.kind === 'video').length,
+    audio: st.audioJobs.length,
     flags: st.flags,
   };
+}
+
+/** 오디오 할 일: 대본 전체(듣기 장) + 대본 장마다 그 장의 줄 */
+function audioJobsFor_(st) {
+  const jobs = [];
+  if (st.deck.some(s => s.kind === 'listen')) {
+    jobs.push(audioJob_('full', '듣기_대본_전체', st.input.script.split(/\n+/)));
+  }
+  st.deck.forEach((s, i) => {
+    if (s.kind !== 'script') return;
+    const lines = s.lines.filter(l => l.en.indexOf(NEED) < 0).map(l => (l.spk ? l.spk + ': ' : '') + l.en);
+    if (lines.length) jobs.push(audioJob_(s.audioKey, `대본_${i + 1}장`, lines));
+  });
+  return jobs;
+}
+
+/** 결과 화면의 [영상 넣고 다시 만들기]: 영상 링크만 바꾸고 조립부터 다시 — 제미나이 글 생성은 다시 부르지 않는다 */
+function setVideos(folderId, f) {
+  const st = loadState_(folderId);
+  f = f || {};
+  st.input.videos = parseVideos_(f);
+  st.input.videoOverview = String(f.videoOverview || '');
+  st.input.videoSections = String(f.videoSections || '');
+  saveState_(st);
+  return { overview: !!st.input.videos.overview, sections: st.input.videos.sections.filter(Boolean).length };
 }
 
 // ───────────────────────── 4. 교수용 슬라이드 ─────────────────────────
@@ -144,6 +172,7 @@ function step4_build(folderId) {
   saveState_(st);
 
   const ctx = ctx_(st);
+  ctx.audio = audioMap_(folderId, st.audioJobs);
   const reqs = [];
   st.deck.forEach((s, i) => renderSlide_(ctx, s, i, reqs));
   reqs.push({ deleteObject: { objectId: pres.slides[0].objectId } }); // 새 파일에 딸려 오는 빈 장
@@ -290,7 +319,8 @@ function cleanInput_(f) {
     unit: s('unit'), title: s('title'), book: s('book'), pages: s('pages'),
     sections: s('sections').split(/\n+/).map(x => x.trim()).filter(Boolean),
     source: s('source'), script: s('script'), answers: s('answers'), plan: s('plan'),
-    pageImages: parseImages_(f.pageImages),
+    pageImages: parseImages_(f.pageImages), videos: parseVideos_(f),
+    videoOverview: s('videoOverview'), videoSections: s('videoSections'),
     goals: s('goals'), lastClass: s('lastClass'), assignment: s('assignment'),
     target: Math.min(60, Math.max(30, parseInt(s('target'), 10) || 48)),
   };

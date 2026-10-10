@@ -65,6 +65,11 @@
   .frow input[type=file]{padding:6px;font-size:12.5px;background:#fff}
   ul.flist{list-style:none;margin:10px 0 0;padding:0;font-size:12.5px}
   ul.flist li{padding:4px 0;color:var(--ink2)} ul.flist li.ok{color:var(--deep)} ul.flist li.err{color:var(--accent-deep)}
+  .vbox{border:1px solid var(--hair);border-radius:12px;padding:12px 14px;background:#FCFCFC}
+  .vbox b{font-size:13.5px}.vbox b small{font-weight:400;color:var(--ink3);font-size:12px}
+  .nlm{margin-top:16px;border:1px solid var(--line);background:var(--soft);border-radius:14px;padding:16px 18px}
+  .nlm h3{margin:0 0 6px;font:700 15px/1.3 Inter,"Noto Sans KR",sans-serif}
+  .nlm ol{margin:6px 0 10px;padding-left:20px;font-size:13.5px;line-height:1.7}
   .warn{display:none;margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--accent-soft);border:1px solid #FFDCCE;color:var(--accent-deep);font-size:13.5px}
   @media (max-width:720px){.grid{grid-template-columns:1fr 1fr}.links{grid-template-columns:1fr}header h1{font-size:26px}}
 </style>
@@ -130,6 +135,11 @@
       <div class="w2"><label>학습 목표 <small>메모로 충분</small></label><textarea name="goals" rows="3"></textarea></div>
       <div class="w2"><label>지난 시간 <small>도입에서 잇는 말</small></label><textarea name="lastClass" rows="3"></textarea></div>
       <div class="w4"><label>과제 안내 <small>요건 숫자·기한·평가 기준 — 비우면 자리표시자</small></label><textarea name="assignment" rows="3"></textarea></div>
+      <div class="w4 vbox"><b>영상 넣기 <small>선택 — 유튜브 링크나 드라이브 영상 링크. 슬라이드 안에서 바로 재생됩니다</small></b>
+        <div class="grid" style="margin-top:8px">
+          <div class="w4"><label>개요 영상 <small>표지 다음 장 · NotebookLM 동영상 개요를 내려받아 드라이브에 올린 링크도 됩니다</small></label><input name="videoOverview" placeholder="예: https://drive.google.com/file/d/…/view"></div>
+          <div class="w4"><label>섹션 복습 영상 <small>줄마다 하나, 섹션 순서대로 (그 섹션이 없으면 빈 줄) · 섹션 끝에 들어갑니다</small></label><textarea name="videoSections" rows="3"></textarea></div>
+        </div></div>
     </div>
     <div class="row" style="margin-top:18px">
       <button class="primary" id="go" type="submit">슬라이드·퀴즈 만들기</button>
@@ -153,6 +163,21 @@
     <p class="hint" id="rHint"></p>
     <div class="links" id="links"></div>
     <div id="flagWrap" style="margin-top:16px"></div>
+    <div class="nlm">
+      <h3>NotebookLM 동영상 개요로 잇기</h3>
+      <ol>
+        <li><a id="nlmRecord" href="#">입력 기록 문서</a>를 엽니다 — 교재 원문·대본·정답이 들어 있습니다.</li>
+        <li><a href="https://notebooklm.google.com/">NotebookLM</a>에서 새 노트북 → 자료 추가 → <b>Google Drive</b> → 그 문서를 고릅니다.</li>
+        <li><b>동영상 개요</b>를 만들고 내려받아 드라이브(이 결과 폴더 등)에 올린 뒤, 링크를 아래에 붙여넣습니다.</li>
+      </ol>
+      <div class="grid">
+        <div class="w4"><label>개요 영상 링크</label><input id="rvOverview" placeholder="드라이브 영상 또는 유튜브 링크"></div>
+        <div class="w4"><label>섹션 복습 영상 <small>줄마다, 섹션 순서대로</small></label><textarea id="rvSections" rows="2"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="primary" type="button" id="relinkBtn" onclick="relink()">영상 넣고 다시 만들기</button>
+        <span class="note" style="margin:0">제미나이 글 생성은 다시 하지 않습니다 · 약 1–2분 · 교수용·학생용 슬라이드와 퀴즈 폼을 새로 만듭니다</span></div>
+      <p class="note">학생에게 나눠 줄 때는 드라이브의 영상·음성 파일(또는 결과 폴더)을 “링크가 있는 모든 사용자 — 보기”로 공유해야 학생 화면에서 재생됩니다.</p>
+    </div>
   </div>
 </div>
 
@@ -175,6 +200,7 @@ var STEPS=[];
 function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대',d:'제미나이'}];
   job.sections.forEach(function(n,i){STEPS.push({id:'sec'+i,i:i,par:1,t:'섹션 '+(i+1)+' · '+n,d:'제미나이 — 해설·문항·정답 (섹션들을 동시에 만듭니다)'})});
   STEPS.push({id:'quizgen',par:1,t:'확인 퀴즈 문항',d:'제미나이 — 원문에서 정답을 확인할 수 있는 문항만'},{id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
+    {id:'audio',t:'듣기 음성 만들기',d:'제미나이 음성(TTS) — 대본 전체와 대본 장마다'},
     {id:'build',t:'교수용 구글 슬라이드',d:'정답 장·강의 노트 포함'},
     {id:'student',t:'학생용 사본',d:'정답 장과 강의 노트를 뺀 사본'},
     {id:'quiz',t:'퀴즈 폼',d:'퀴즈 모드 · 정답·배점·해설'},
@@ -206,7 +232,8 @@ function runStep(s){
     return '「'+r.title+'」 섹션 '+r.sections.length+'개 · '+r.model;});
   if(s.id==='quizgen') return call('step2_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.model});
   if(s.i!=null) return call('step2_section',job.folderId,s.i).then(function(r){return r.count+'장 분량 · '+r.model});
-  if(s.id==='assemble') return call('step3_assemble',job.folderId).then(function(r){job.flags=r.flags;return '전체 '+r.total+'장 · 문항 '+r.questions+'개(정답 장 '+r.answers+'장) · 경고 '+r.flags.length+'건'});
+  if(s.id==='assemble') return call('step3_assemble',job.folderId).then(function(r){job.flags=r.flags;job.audio=r.audio;return '전체 '+r.total+'장 · 문항 '+r.questions+'개(정답 장 '+r.answers+'장)'+(r.videos?' · 영상 '+r.videos+'개':'')+' · 경고 '+r.flags.length+'건'});
+  if(s.id==='audio') return audioAll();
   if(s.id==='build') return call('step4_build',job.folderId).then(function(r){return r.total+'장 완성'+(r.images?' · 지면 사진 '+r.images+'장':'')});
   if(s.id==='student') return call('step5_student',job.folderId).then(function(r){return r.total+'장 (정답 장 '+r.removed+'장 뺌)'});
   if(s.id==='quiz') return call('step6_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.points+'점 만점'});
@@ -224,6 +251,15 @@ function runGroup(){
       .catch(function(e){clearInterval(tick);mark(s.id,'err',null,secs(t));errs.push(s.t+': '+(e&&e.message||e));});}))
   .then(function(){if(errs.length){fail({message:errs.join(' / ')+' — [이 단계 다시]를 누르면 실패한 것만 다시 만듭니다.'});return}
     job.at+=group.length;loop();});}
+/* 음성은 두 개씩 나눠 만든다 (무료 사용량 보호). 실패해도 덱은 버튼 없이 계속 만든다. */
+function audioAll(){var n=job.audio||0;if(!n)return Promise.resolve('대본이 없어 건너뜀');
+  var k=0,ok=0,reused=0,fails=[];
+  function worker(){if(k>=n)return Promise.resolve();var i=k++;
+    mark('audio','run',(ok+reused)+' / '+n+' 만드는 중…');
+    return call('step3_audio',job.folderId,i).then(function(r){if(r.reused)reused++;else if(!r.skipped)ok++;})
+      .catch(function(e){fails.push(e&&e.message||e)}).then(worker);}
+  return Promise.all([worker(),worker()]).then(function(){
+    return (ok+reused)+' / '+n+'개 준비'+(reused?' (이전 것 '+reused+'개 재사용)':'')+(fails.length?' · 실패 '+fails.length+'개 — '+String(fails[0]).slice(0,80):'');});}
 function loop(){
   var s=STEPS[job.at];
   if(!s){done();return}
@@ -242,7 +278,17 @@ function done(){$('go').disabled=false;var r=job.result;$('result').style.displa
   $('links').innerHTML=L.map(function(x){return '<a class="'+(x[3]?'main':'')+'" href="'+esc(x[0])+'"><b>'+esc(x[1])+' ↗</b><span>'+esc(x[2])+'</span></a>'}).join('');
   $('flagWrap').innerHTML=r.flags.length?'<details open><summary>검증 경고 '+r.flags.length+'건 — 슬라이드에서 확인할 곳</summary><ul class="flags">'+r.flags.map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul></details>'
     :'<p class="note">검증 경고 없음 — 대본·정답·퀴즈 근거가 모두 원문에서 확인되었습니다.</p>';
+  $('nlmRecord').href=r.recordUrl;
+  var f=$('f').elements;$('rvOverview').value=f.videoOverview.value;$('rvSections').value=f.videoSections.value;
   $('result').scrollIntoView({behavior:'smooth'});}
+function relink(){if(!job.folderId)return;
+  $('relinkBtn').disabled=true;var f=$('f').elements;f.videoOverview.value=$('rvOverview').value;f.videoSections.value=$('rvSections').value;
+  call('setVideos',job.folderId,{videoOverview:$('rvOverview').value,videoSections:$('rvSections').value}).then(function(){
+    $('relinkBtn').disabled=false;
+    var k=STEPS.map(function(s){return s.id}).indexOf('assemble');job.at=k;
+    STEPS.slice(k).forEach(function(s){mark(s.id,'',null,'')});
+    $('result').style.display='none';$('progress').scrollIntoView({behavior:'smooth'});$('go').disabled=true;loop();})
+  .catch(function(e){$('relinkBtn').disabled=false;alert(e&&e.message||e)});}
 
 /* ── 교재 파일 → 원문 ── */
 var IMAGES=[];

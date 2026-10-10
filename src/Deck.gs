@@ -15,6 +15,9 @@ const INK = '#141414', INK2 = '#3D3D3D', INK3 = '#737373';
 const ACCENT = '#FF6E40', ACCENT_SOFT = '#FFF1EB', ACCENT_LINE = '#FFDCCE', ACCENT_DEEP = '#D9490F';
 const BODY_TOP = 112, BODY_BOTTOM = 366;
 
+/** 글이 같으면 같은 이름 — 영상을 넣어 장 번호가 바뀌어도 만든 음성을 다시 쓴다 */
+function hash_(t) { let h = 5381; String(t).split('').forEach(ch => { h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0; }); return h.toString(36); }
+
 function slideId_(i) { return 'sl_' + ('000' + i).slice(-3); }
 
 function ctx_(st) {
@@ -35,6 +38,10 @@ function assembleDeck_(st) {
 
   D.push({ kind: 'title', sec: 'Title', ref: inp.pages, title_en: o.title_en, title_ko: o.title_ko,
     notes: `표지. 인사와 함께 오늘 차시(${inp.kind})를 소개한다. 30초.` });
+  const vids = inp.videos || { sections: [] };
+  if (vids.overview) D.push({ kind: 'video', sec: 'Overview', ref: inp.pages, video: vids.overview,
+    title_en: 'Overview Video', title_ko: '개요 영상 — 오늘 배울 것을 먼저 훑어봅니다',
+    notes: '개요 영상(정답 없음). 재생 후 오늘의 목표로 넘어간다.' });
   D.push({ kind: 'pairs', sec: 'Welcome', ref: inp.pages, title_en: o.intro.title_en || `Welcome to Week ${inp.week}`,
     title_ko: o.intro.title_ko || '인사와 오늘의 연결', tags: tags.concat(a.due ? [{ t: 'Due ' + a.due, warm: true }] : []),
     pairs: o.intro.pairs, focus: o.intro.focus && o.intro.focus.big ? o.intro.focus : null,
@@ -49,11 +56,16 @@ function assembleDeck_(st) {
     D.push({ kind: 'page', sec: sec.name_en, ref, title_en: `Textbook ${sec.page_ref || ''}`.trim(), title_ko: '교재 지면 — 먼저 함께 봅니다',
       starts: sec.starts_with, images: imagesFor_(inp.pageImages, sec.page_ref),
       notes: '교재 지면을 먼저 띄우고 학생들이 같은 쪽을 펴게 한다. 해설은 다음 장부터. (지면 사진을 넣으려면 이 장의 점선 상자를 지우고 [삽입 → 이미지 → 드라이브])' });
+    // 듣기 섹션(Before you listen 제외)이고 대본이 있으면 '전체 듣기' 장 — 음성은 제미나이 TTS
+    if (inp.script && /listen/i.test(sec.name_en) && !/before/i.test(sec.name_en)) {
+      D.push({ kind: 'listen', sec: sec.name_en, ref, audioKey: 'full', title_en: 'Listen', title_ko: '전체 듣기 — 대화를 처음부터 끝까지 듣습니다',
+        notes: '▶ 버튼을 누르면 드라이브 재생 창이 열린다. 슬라이드 안에서 재생하려면 삽입 → 오디오 → 드라이브에서 같은 파일. 합성 음성(TTS) 대체 음원임을 말해 둔다.' });
+    }
     st.sections[i].forEach(s => {
       const base = { sec: sec.name_en, ref, title_en: s.title_en, title_ko: s.title_ko, notes: s.notes };
       if (s.type === 'pairs') splitPairs_(s).forEach((p, k, all) => D.push(Object.assign({}, base, p, {
         kind: 'pairs', title_en: s.title_en + (all.length > 1 ? ` (${k + 1}/${all.length})` : '') })));
-      else if (s.type === 'script') D.push(Object.assign({}, base, { kind: 'script', lines: s.lines }));
+      else if (s.type === 'script') D.push(Object.assign({}, base, { kind: 'script', lines: s.lines, audioKey: 'clip_' + hash_(s.lines.map(l => l.en).join(' ')) }));
       else if (s.type === 'chips') D.push(Object.assign({}, base, { kind: 'chips', groups: s.groups }));
       else if (s.type === 'question') {
         D.push(Object.assign({}, base, { kind: 'question', label: s.label, from_textbook: s.from_textbook,
@@ -64,6 +76,9 @@ function assembleDeck_(st) {
           notes: '정답 장 (학생용 사본에는 없음). ' + (s.evidence ? `근거: ${s.evidence}` : '') }));
       }
     });
+    if (vids.sections[i]) D.push({ kind: 'video', sec: sec.name_en, ref, video: vids.sections[i],
+      title_en: `Review Video · ${sec.name_en}`, title_ko: '섹션 복습 영상 — 정답이 나오므로 섹션 끝에 둡니다',
+      notes: '섹션 복습 영상. 정답이 들어 있을 수 있어 문항을 다 푼 뒤에 튼다.' });
   });
 
   if (o.phrasebook.groups.length) {
@@ -191,6 +206,7 @@ function painter_(reqs, i) {
         f.push('outline.outlineFill.solidFill.color', 'outline.weight', 'outline.dashStyle');
       } else if (type !== 'TEXT_BOX') { props.outline = { propertyState: 'NOT_RENDERED' }; f.push('outline.propertyState'); }
       if (o.middle) { props.contentAlignment = 'MIDDLE'; f.push('contentAlignment'); }
+      if (o.link) { props.link = { url: o.link }; f.push('link'); }
       if (f.length) reqs.push({ updateShapeProperties: { objectId: id, shapeProperties: props, fields: f.join(',') } });
       return id;
     },
@@ -203,6 +219,14 @@ function painter_(reqs, i) {
       return id;
     },
     rect(x, y, w, h, color) { return P.shape('RECTANGLE', x, y, w, h, { fill: color }); },
+    /** 영상: 드라이브·유튜브 영상을 슬라이드 안에 넣는다 (발표 중 바로 재생) */
+    video(v, x, y, w, h) {
+      const id = nid();
+      reqs.push({ createVideo: { objectId: id, source: v.source, id: v.id, elementProperties: {
+        pageObjectId: pid, size: { width: pt_(w), height: pt_(h) },
+        transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' } } } });
+      return id;
+    },
   };
   return P;
 }
@@ -314,7 +338,8 @@ function tags_(P, c, tags, y) {
 function renderSlide_(c, s, i, reqs) {
   const P = painter_(reqs, i);
   const fn = { title: rTitle_, pairs: rPairs_, goals: rGoals_, divider: rDivider_, page: rPage_, script: rScript_,
-    question: rQuestion_, answer: rAnswer_, chips: rChips_, cards: rCards_, ticks: rTicks_, rows: rRows_, close: rClose_ }[s.kind];
+    question: rQuestion_, answer: rAnswer_, chips: rChips_, cards: rCards_, ticks: rTicks_, rows: rRows_, close: rClose_,
+    video: rVideo_, listen: rListen_ }[s.kind];
   (fn || rPairs_)(P, c, s, i);
 }
 
@@ -374,6 +399,32 @@ function rDivider_(P, c, s, i) {
   foot_(P, c, i, c.light);
 }
 
+function rVideo_(P, c, s, i) {
+  chrome_(P, c, s, i);
+  const w = 452, h = 254;
+  P.video(s.video, (720 - w) / 2, BODY_TOP + 2, w, h);
+}
+
+function rListen_(P, c, s, i) {
+  chrome_(P, c, s, i);
+  const a = c.audio && c.audio[s.audioKey];
+  P.text(40, BODY_TOP, 420, 120, [
+    { t: 'LISTEN · 듣기', st: { f: MO, s: 8.5, c: c.brand } },
+    { t: 'Listen to the whole conversation first. Don\u2019t stop \u2014 just get the big picture.', st: { f: EN, s: 18, b: true, c: INK }, pa: { sa: 8, ls: 110 } },
+    { t: '먼저 대화를 끝까지 들어 보세요. 멈추지 말고 큰 그림만 잡습니다.', st: { f: KO, s: 11.5, c: INK3 }, pa: { sa: 6, ls: 130 } }]);
+  if (a) audioButton_(P, c, a, 44, BODY_TOP + 140, 300, 48, '\u25B6  전체 듣기  ' + mmss_(a.secs));
+  else P.text(44, BODY_TOP + 140, 420, 48, [{ t: '음성 파일이 아직 없습니다 — 교재 음원을 드라이브에 올려 이 자리에 연결하세요.', st: { f: KO, s: 10.5, c: INK3 } }],
+    { type: 'ROUND_RECTANGLE', fill: '#FAFAFA', line: '#D6D6D6', dash: 'DASH', middle: true });
+  P.text(40, 330, 640, 32, [{ t: '합성 음성(제미나이 TTS) 대체 음원입니다 · 슬라이드 안에서 바로 재생하려면 편집기에서 삽입 → 오디오 → 드라이브의 같은 파일', st: { f: KO, s: 8.5, c: INK3 } }]);
+  focus_(P, c, { label: 'TRACK', big: a ? mmss_(a.secs) : '—', ko: a ? a.name : '' });
+}
+
+/** ▶ 버튼: 누르면 드라이브 재생 창 */
+function audioButton_(P, c, a, x, y, w, h, label) {
+  P.text(x, y, w, h, [{ t: label, st: { f: EN, s: h > 36 ? 15 : 10.5, b: true, c: '#FFFFFF' }, pa: { al: 'CENTER' } }],
+    { type: 'ROUND_RECTANGLE', fill: c.brand, middle: true, link: a.url });
+}
+
 function rPage_(P, c, s, i) {
   chrome_(P, c, s, i);
   if (s.images && s.images.length) return; // 지면 사진은 placePageImages_가 넣는다
@@ -393,6 +444,8 @@ function rScript_(P, c, s, i) {
   });
   P.rect(46, BODY_TOP + 20, 2, 210, c.line);
   P.text(52, BODY_TOP, 628, BODY_BOTTOM - BODY_TOP, paras);
+  const a = c.audio && c.audio[s.audioKey];
+  if (a) audioButton_(P, c, a, 560, 344, 120, 24, '\u25B6 LISTEN  ' + mmss_(a.secs));
 }
 
 function rQuestion_(P, c, s, i) {
