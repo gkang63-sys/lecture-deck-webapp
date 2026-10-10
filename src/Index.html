@@ -100,13 +100,13 @@
   <form class="card" id="f" onsubmit="start(event)" novalidate>
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
       <div><h2>1 · 단원과 교재 내용</h2><p class="hint" style="margin:0">교재 본문·대본·정답은 여기 넣은 글만 씁니다. 없는 것은 지어내지 않고 [원문 필요] 자리표시자로 둡니다.</p></div>
-      <button type="button" onclick="fillSample()">예시 채우기</button>
+      <span><span class="note" id="draftNote" style="display:none;margin:0 8px 0 0">지난 입력을 불러왔습니다</span><button type="button" onclick="clearDraft()">입력 지우기</button> <button type="button" onclick="fillSample()">예시 채우기</button></span>
     </div>
     <div class="files">
       <h3>교재 파일로 넣기 <span style="font-weight:400;color:var(--ink3);font-size:12.5px">— 선택. 고르고 [원문 읽기]를 누르면 아래 칸이 채워집니다</span></h3>
       <p class="hint" style="margin:0 0 6px">PDF·사진은 제미나이가 지면을 보고 받아 적고, Word는 글을 그대로 꺼냅니다. 받아 적은 글은 꼭 훑어보고 틀린 곳을 고쳐 주세요. 지면 사진(jpg·png)은 교재 지면 장에 그대로 들어갑니다.</p>
       <div class="frow"><div><b>교재 지면</b><small>PDF 또는 쪽별 사진</small></div><input type="file" id="fBook" multiple accept=".pdf,image/*"></div>
-      <div class="frow"><div><b>교사용 지도서</b><small>대본·정답·해설 상자</small></div><input type="file" id="fGuide" multiple accept=".pdf,image/*"></div>
+      <div class="frow"><div><b>교사용 지도서</b><small>대본·정답·해설 상자 · 저작권 보호로 거절되면 아래 칸에 직접 붙여넣기</small></div><input type="file" id="fGuide" multiple accept=".pdf,image/*"></div>
       <div class="frow"><div><b>교안</b><small>Word(.docx)·PDF</small></div><input type="file" id="fPlan" multiple accept=".doc,.docx,.pdf,.txt"></div>
       <div class="row" style="margin-top:10px"><button type="button" id="readBtn" onclick="readFiles()">원문 읽기</button><span class="note" style="margin:0">파일마다 30초–2분. 올린 파일은 드라이브 강의자료/_올린 파일/ 에 보관됩니다.</span></div>
       <ul class="flist" id="flist"></ul>
@@ -193,6 +193,17 @@ function showKey(s){var p=$('keyPill');p.textContent=s.hasKey?'저장됨':'키 �
   if(s.hasKey&&!$('keyEdit')){var b=document.createElement('button');b.id='keyEdit';b.type='button';b.textContent='바꾸기';b.style.marginLeft='8px';b.onclick=function(){$('keyForm').style.display='flex'};p.after(b);}}
 function saveKey(){var v=$('apiKey').value;call('saveApiKey',v).then(function(s){$('apiKey').value='';showKey(s)}).catch(function(e){alert(e.message)})}
 call('getSettings').then(showKey).catch(function(){$('keyPill').textContent='확인 실패'});
+
+/* ── 입력 자동 저장: 새로고침해도 칸이 남도록 이 브라우저에만 저장 (파일 선택은 브라우저가 막아서 남지 않음) ── */
+var DRAFT='lectureDeckDraft';
+function saveDraft(){try{var o=collect();localStorage.setItem(DRAFT,JSON.stringify(o));}catch(e){}}
+function loadDraft(){try{var o=JSON.parse(localStorage.getItem(DRAFT)||'null');if(!o)return;var f=$('f').elements;
+  Object.keys(o).forEach(function(k){if(f[k]&&f[k].type!=='file'&&o[k]!=null&&o[k]!=='')f[k].value=o[k]});paint(f.course.value);
+  try{IMAGES=JSON.parse(o.pageImages||'[]')}catch(e){IMAGES=[]}
+  var n=$('draftNote');if(n)n.style.display='inline';}catch(e){}}
+function clearDraft(){try{localStorage.removeItem(DRAFT)}catch(e){}$('f').reset();$('pageImages').value='[]';IMAGES=[];READ={};$('flist').innerHTML='';var n=$('draftNote');if(n)n.style.display='none';}
+$('f').addEventListener('input',saveDraft);$('f').addEventListener('change',saveDraft);
+loadDraft();
 
 /* ── 진행 ── */
 var job={folderId:null,sections:[],at:0,t0:0};
@@ -291,7 +302,7 @@ function relink(){if(!job.folderId)return;
   .catch(function(e){$('relinkBtn').disabled=false;alert(e&&e.message||e)});}
 
 /* ── 교재 파일 → 원문 ── */
-var IMAGES=[], READ={}; /* 이미 읽은 파일은 다시 누를 때 건너뛴다 (칸에 두 번 들어가지 않게) */
+var IMAGES=IMAGES||[], READ=READ||{}; /* 이미 읽은 파일은 다시 누를 때 건너뛴다 (칸에 두 번 들어가지 않게) */
 function b64(file){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1]||'')};r.onerror=no;r.readAsDataURL(file)})}
 function upload(file,li,label){var id='u'+Date.now()+Math.random().toString(36).slice(2,7);
   return b64(file).then(function(data){var CH=2000000,n=Math.ceil(data.length/CH)||1,k=0;
@@ -314,6 +325,7 @@ function readFiles(){
       return call('extractFile',info.id,j.role)})
     .then(function(r){add('source',r.source);add('script',r.script);add('answers',r.answers);add('plan',r.plan);
       if(r.image)IMAGES.push(r.image);
+      $('pageImages').value=JSON.stringify(IMAGES);saveDraft();
       READ[j.role+'|'+j.file.name+'|'+j.file.size]=1;
       var n=['source','script','answers','plan'].reduce(function(a,k){return a+(r[k]?r[k].length:0)},0);
       j.li.className='ok';j.li.textContent='✓ '+j.label+' · '+j.file.name+' — '+n.toLocaleString()+'자'+(r.page?' · '+r.page:'')+(r.image?' · 지면 사진으로 사용':'')+' · '+secs(t)+(r.warn?' · '+r.warn:'');})
@@ -322,7 +334,7 @@ function readFiles(){
 
 /* ── 예시 (직접 만든 글 — 실제 교재 아님) ── */
 function fillSample(){var f=$('f').elements;var S=<?!= JSON.stringify(sample_()) ?>;
-  Object.keys(S).forEach(function(k){if(f[k])f[k].value=S[k]});paint(S.course);}
+  Object.keys(S).forEach(function(k){if(f[k])f[k].value=S[k]});paint(S.course);saveDraft();}
 </script>
 </body>
 </html>
