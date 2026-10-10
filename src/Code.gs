@@ -240,7 +240,9 @@ function step7_finish(folderId) {
   const body = doc.getBody();
   const h = t => body.appendParagraph(t).setHeading(DocumentApp.ParagraphHeading.HEADING2);
   const p = t => body.appendParagraph(String(t || '—'));
-  body.getParagraphs()[0].setText(`입력 기록 — ${st.folderName}`).setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const first = body.getParagraphs()[0]; // setText는 문단을 돌려주지 않으므로 나눠 부른다
+  first.setText(`입력 기록 — ${st.folderName}`);
+  first.setHeading(DocumentApp.ParagraphHeading.HEADING1);
   p(`만든 때: ${Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm')}`);
   p(`흐름: 웹앱(단원·교재 내용 입력) → 제미나이 → 구글 슬라이드 → 퀴즈 폼 → 드라이브에 저장`);
   h('결과');

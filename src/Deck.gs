@@ -207,10 +207,12 @@ function painter_(reqs, i) {
   return P;
 }
 
+/** 문단을 [글, 모양] 조각으로. **강조**는 굵게(p.em 모양)로 바꾸고 별표는 지운다 */
 function runs_(p) {
-  if (Array.isArray(p.t)) return p.t.map(r => [String(r[0] || ''), r[1] || {}]);
-  const parts = String(p.t || '').replace(/\r?\n/g, ' ').split(/\*\*(.+?)\*\*/);
-  return parts.map((t, i) => [t, i % 2 ? (p.em || { b: true }) : {}]).filter(r => r[0]);
+  const split = (text, base) => String(text || '').replace(/\r?\n/g, ' ').split(/\*\*(.+?)\*\*/)
+    .map((t, i) => [t.replace(/\*\*/g, ''), i % 2 ? Object.assign({}, base, p.em || { b: true }) : base]);
+  const list = Array.isArray(p.t) ? p.t.reduce((a, r) => a.concat(split(r[0], r[1] || {})), []) : split(p.t, {});
+  return list.filter(r => r[0]);
 }
 
 function fillText_(reqs, id, paras) {

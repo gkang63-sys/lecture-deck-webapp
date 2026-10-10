@@ -212,7 +212,7 @@ function srcAll_(inp) { return norm_([inp.source, inp.script, inp.answers, inp.p
 function norm_(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 function inSource_(text, src) {
   const t = norm_(String(text || '').replace(/\*\*/g, ''));
-  return t.length >= 6 && src.indexOf(t) > -1;
+  return t.length >= 4 && src.indexOf(t) > -1;
 }
 /** 짧은 표현(낱말 하나)도 원문에 있는지 */
 function found_(text, src) { const t = norm_(text); return t.length >= 2 && src.indexOf(t) > -1; }
@@ -296,6 +296,7 @@ function checkQuiz_(quiz, inp, flags) {
 function checkSectionSlides_(slides, inp, sec, flags) {
   const tag = `[${sec.name_en}]`;
   const src = srcAll_(inp);
+  const keys = norm_(inp.answers); // 정답 칸의 "1 b  2 d"처럼 짧은 근거도 정답 칸에 있으면 인정
   const out = [];
   (slides || []).forEach(s => {
     if (!s || typeof s !== 'object') return;
@@ -321,7 +322,7 @@ function checkSectionSlides_(slides, inp, sec, flags) {
       }
       const sample = /^sample\b/i.test(q.answer_en);
       const need = q.answer_en.indexOf(NEED) > -1 || !q.answer_en;
-      if (!sample && !need && !inSource_(q.evidence, src)) {
+      if (!sample && !need && !inSource_(q.evidence, src) && !found_(q.evidence, keys)) {
         flags.push(`${tag} 원문에서 근거를 찾지 못한 정답을 자리표시자로 바꿨습니다: "${q.q_en.slice(0, 50)}" → ${q.answer_en.slice(0, 40)}`);
         q.answer_en = NEED; q.evidence = '';
       } else if (need) {
