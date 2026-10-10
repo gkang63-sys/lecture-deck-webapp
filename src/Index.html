@@ -172,6 +172,14 @@
     <p class="hint" id="rHint"></p>
     <div class="links" id="links"></div>
     <div id="flagWrap" style="margin-top:16px"></div>
+    <div class="nlm" id="vidBox">
+      <h3>섹션 요약 영상 자동 제작</h3>
+      <p class="note" style="margin:0 0 8px">제미나이가 섹션마다 복습 대본(영어 + 한국어 자막)을 쓰고, 음성을 붙여 이 화면에서 바로 녹화합니다. 만든 영상은 섹션 끝에 자동으로 들어갑니다.
+        녹화는 재생 시간만큼 걸리니(섹션당 1분 안팎) <b>이 창을 앞에 띄워 두세요</b>. 무료 음성 사용량이 찼으면 자막만 있는 영상으로 만듭니다.</p>
+      <div class="row"><button class="primary" type="button" id="vidBtn" onclick="makeVideos()">섹션 영상 만들기</button><span class="note" id="vidStatus" style="margin:0"></span></div>
+      <canvas id="vcanvas" width="1280" height="720" style="display:none;width:100%;max-width:640px;margin-top:12px;border-radius:10px;border:1px solid var(--line)"></canvas>
+      <ul class="flist" id="vidList"></ul>
+    </div>
     <div class="nlm">
       <h3>NotebookLM 동영상 개요로 잇기</h3>
       <ol>
@@ -325,6 +333,68 @@ function openOld(){var id=$('jobSel').value;if(!id)return;
     if(j.result){job.result=j.result;done();}
     else{$('result').style.display='none';$('errMsg').innerHTML='<b>이어서 만들 수 있습니다.</b> 조립 단계부터 다시 합니다.';$('errBox').style.display='block';}
   }).catch(function(e){alert(e&&e.message||e)});}
+
+/* ── 섹션 요약 영상: 캔버스에 장면을 그리며 음성과 함께 녹화 (MediaRecorder) ── */
+var VP=null;
+function vstat(t){$('vidStatus').textContent=t}
+function b64ToBuf(b){var bin=atob(b),n=bin.length,u=new Uint8Array(n);for(var i=0;i<n;i++)u[i]=bin.charCodeAt(i);return u.buffer}
+function wrapText(g,text,x,y,maxW,lh,maxLines){var words=String(text||'').split(/\s+/),line='',lines=[];
+  words.forEach(function(w){var t=line?line+' '+w:w;if(g.measureText(t).width>maxW&&line){lines.push(line);line=w}else line=t});if(line)lines.push(line);
+  if(lines.length===1&&g.measureText(lines[0]).width>maxW){var chars=lines[0].split(''),cur='';lines=[];chars.forEach(function(ch){if(g.measureText(cur+ch).width>maxW){lines.push(cur);cur=ch}else cur+=ch});if(cur)lines.push(cur)}
+  lines.slice(0,maxLines||9).forEach(function(l,k){g.fillText(l,x,y+k*lh)});return Math.min(lines.length,maxLines||9)*lh}
+function drawScene(g,P,sec,t,intro,marks,dur){var W=1280,H=720;
+  g.fillStyle='#ffffff';g.fillRect(0,0,W,H);
+  g.fillStyle=P.soft;g.beginPath();g.arc(1180,-40,330,0,7);g.fill();
+  g.fillStyle=P.brand;g.fillRect(0,H-6,W*Math.min(1,t/(intro+dur+1.5)),6);
+  g.font='500 18px "IBM Plex Mono", monospace';g.fillStyle='rgba(0,0,0,.5)';g.fillText(('WEEK '+P.week+'  ▸  REVIEW · '+sec.name).toUpperCase(),80,70);
+  g.font='500 15px "IBM Plex Mono", monospace';g.fillText(P.foot,80,H-40);
+  if(t<intro){g.fillStyle='#141414';g.font='800 64px Inter, "Noto Sans KR", sans-serif';wrapText(g,sec.title_en,80,300,1050,74,2);
+    g.font='500 30px "Noto Sans KR", sans-serif';g.fillStyle='rgba(0,0,0,.6)';wrapText(g,sec.title_ko,80,450,1050,42,2);
+    g.font='600 22px "IBM Plex Mono", monospace';g.fillStyle=P.deep;g.fillText('REVIEW VIDEO · 섹션 복습',80,540);return}
+  var tt=t-intro,k=0;for(var i=0;i<marks.length;i++)if(tt>=marks[i])k=i;var sc=sec.scenes[k];
+  g.fillStyle=P.brand;g.fillRect(80,120,46,5);
+  g.font='600 18px "IBM Plex Mono", monospace';g.fillStyle=P.deep;g.fillText((k+1)+' / '+sec.scenes.length,140,128);
+  g.font='800 70px Inter, "Noto Sans KR", sans-serif';g.fillStyle=P.deep;wrapText(g,sc.key||'',80,240,1100,80,1);
+  g.font='700 40px Inter, "Noto Sans KR", sans-serif';g.fillStyle='#141414';var h=wrapText(g,sc.en,80,350,1100,54,4);
+  g.font='500 28px "Noto Sans KR", sans-serif';g.fillStyle='rgba(0,0,0,.6)';wrapText(g,sc.ko,80,350+h+30,1100,42,3)}
+function recordSection(P,sec,a){return new Promise(function(done,fail){
+  var cv=$('vcanvas'),g=cv.getContext('2d');cv.style.display='block';
+  var actx=new (window.AudioContext||window.webkitAudioContext)(),dest=actx.createMediaStreamDestination();
+  var ready=a.silent?Promise.resolve(null):actx.decodeAudioData(b64ToBuf(a.b64));
+  ready.then(function(ab){
+    var dur=ab?ab.duration:sec.scenes.reduce(function(t,s){return t+Math.max(3.5,s.en.split(/\s+/).length/2.3+1.5)},0);
+    var lens=sec.scenes.map(function(s){return s.en.length+25}),tot=lens.reduce(function(a,b){return a+b},0),acc=0;
+    var marks=lens.map(function(l){var m=acc;acc+=l/tot*dur;return m});
+    var intro=2.5,total=intro+dur+1.5;
+    var stream=cv.captureStream(0),vtrack=stream.getVideoTracks()[0];dest.stream.getAudioTracks().forEach(function(tr){stream.addTrack(tr)});
+    var mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].filter(function(m){return window.MediaRecorder&&MediaRecorder.isTypeSupported(m)})[0];
+    if(!mime){fail(new Error('이 브라우저는 화면 녹화(MediaRecorder)를 지원하지 않습니다. 크롬에서 열어 주세요.'));return}
+    var rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1000000}),chunks=[];
+    rec.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+    rec.onstop=function(){actx.close();done(new Blob(chunks,{type:'video/webm'}))};
+    drawScene(g,P,sec,0,intro,marks,dur);rec.start(1000);
+    var t0=performance.now();
+    if(ab){var src=actx.createBufferSource();src.buffer=ab;src.connect(dest);src.connect(actx.destination);src.start(actx.currentTime+intro)}
+    var timer=setInterval(function(){var t=(performance.now()-t0)/1000;drawScene(g,P,sec,t,intro,marks,dur);if(vtrack&&vtrack.requestFrame)vtrack.requestFrame();
+      vstat(sec.name+' — 녹화 중 '+Math.min(100,Math.round(t/total*100))+'%');
+      if(t>=total){clearInterval(timer);rec.stop()}},1000/30);
+  }).catch(fail);})}
+function makeVideos(){if(!job.folderId)return;var btn=$('vidBtn');btn.disabled=true;$('vidList').innerHTML='';vstat('제미나이가 복습 대본을 쓰는 중…');
+  var fid=job.folderId,last=null;
+  call('step_videoPlan',fid).then(function(P){VP=P;
+    var i=0;
+    function next(){if(i>=P.plan.length)return Promise.resolve();var k=i++,sec=P.plan[k];
+      var li=document.createElement('li');li.textContent=(k+1)+'. '+sec.name+' — 음성 만드는 중…';$('vidList').appendChild(li);
+      return call('step_videoAudio',fid,k).then(function(a){li.textContent=(k+1)+'. '+sec.name+' — 녹화 중'+(a.silent?' (자막만 — 음성 사용량 초과)':'');return recordSection(P,sec,a).then(function(blob){return {blob:blob,a:a}})})
+        .then(function(r){if(!r.blob||r.blob.size<2000)throw new Error('녹화된 화면이 없습니다 — 웹앱 창이 가려져 있었습니다. 창을 앞에 띄운 채 다시 눌러 주세요.');
+          li.textContent=(k+1)+'. '+sec.name+' — 올리는 중 ('+Math.round(r.blob.size/1048576*10)/10+'MB)';
+          var f=new File([r.blob],'section'+(k+1)+'.webm',{type:'video/webm'});return upload(f,document.createElement('li'),'영상').then(function(info){return call('step_videoSave',fid,k,info.id)}).then(function(sv){last=sv;li.className='ok';li.innerHTML='✓ '+(k+1)+'. '+esc(sec.name)+' — <a href="'+esc(sv.url)+'">영상 보기</a>'+(r.a.silent?' · 자막만':'')})})
+        .catch(function(e){li.className='err';li.textContent='✗ '+(k+1)+'. '+sec.name+' — '+(e&&e.message||e)}).then(next);}
+    return next();
+  }).then(function(){btn.disabled=false;$('vcanvas').style.display='none';if(document.visibilityState!=='visible')vstat('창이 가려져 있으면 녹화가 안 됩니다.');
+    if(!last){vstat('영상을 만들지 못했습니다.');return}
+    vstat('영상을 다 만들었습니다. 덱에 넣는 중…');$('rvSections').value=last.videoSections;relink();})
+  .catch(function(e){btn.disabled=false;vstat('멈췄습니다: '+(e&&e.message||e))});}
 
 /* ── 교재 파일 → 원문 ── */
 var IMAGES=IMAGES||[], READ=READ||{}; /* 이미 읽은 파일은 다시 누를 때 건너뛴다 (칸에 두 번 들어가지 않게) */

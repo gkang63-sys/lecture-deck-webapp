@@ -187,6 +187,19 @@ function step4_build(folderId) {
   st.deck.forEach((s, i) => renderSlide_(ctx, s, i, reqs));
   reqs.push({ deleteObject: { objectId: pres.slides[0].objectId } }); // 새 파일에 딸려 오는 빈 장
   batch_(pres.presentationId, reqs);
+  (reqs.videos || []).forEach((v, k) => {
+    try { batch_(pres.presentationId, [v.req]); } catch (e) {
+      const id = `${v.pid}_vl${k}`;
+      batch_(pres.presentationId, [
+        { createShape: { objectId: id, shapeType: 'ROUND_RECTANGLE', elementProperties: { pageObjectId: v.pid, size: { width: pt_(v.w), height: pt_(60) },
+          transform: { scaleX: 1, scaleY: 1, translateX: v.x, translateY: v.y + v.h / 2 - 30, unit: 'PT' } } } },
+        { insertText: { objectId: id, text: '▶  영상 열기 (드라이브에서 재생)' } },
+        { updateShapeProperties: { objectId: id, shapeProperties: { link: { url: v.link }, contentAlignment: 'MIDDLE' }, fields: 'link,contentAlignment' } },
+        { updateTextStyle: { objectId: id, textRange: { type: 'ALL' }, style: { fontFamily: 'Inter', bold: true, fontSize: pt_(16) }, fields: 'fontFamily,bold,fontSize' } },
+        { updateParagraphStyle: { objectId: id, textRange: { type: 'ALL' }, style: { alignment: 'CENTER' }, fields: 'alignment' } },
+      ]);
+    }
+  });
 
   // 강의 노트(발표자 노트)
   const got = Slides.Presentations.get(pres.presentationId,

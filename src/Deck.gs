@@ -221,10 +221,12 @@ function painter_(reqs, i) {
     rect(x, y, w, h, color) { return P.shape('RECTANGLE', x, y, w, h, { fill: color }); },
     /** 영상: 드라이브·유튜브 영상을 슬라이드 안에 넣는다 (발표 중 바로 재생) */
     video(v, x, y, w, h) {
+      // 영상은 따로 모아 마지막에 하나씩 넣는다 (슬라이드가 못 받는 형식이면 그 자리에 링크 버튼)
       const id = nid();
-      reqs.push({ createVideo: { objectId: id, source: v.source, id: v.id, elementProperties: {
-        pageObjectId: pid, size: { width: pt_(w), height: pt_(h) },
-        transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' } } } });
+      (reqs.videos = reqs.videos || []).push({ pid, x, y, w, h, link: v.link || (v.source === 'YOUTUBE' ? 'https://youtu.be/' + v.id : 'https://drive.google.com/file/d/' + v.id + '/view'),
+        req: { createVideo: { objectId: id, source: v.source, id: v.id, elementProperties: {
+          pageObjectId: pid, size: { width: pt_(w), height: pt_(h) },
+          transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' } } } } });
       return id;
     },
   };
