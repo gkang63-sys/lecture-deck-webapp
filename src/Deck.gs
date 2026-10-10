@@ -58,7 +58,7 @@ function assembleDeck_(st) {
       notes: '교재 지면을 먼저 띄우고 학생들이 같은 쪽을 펴게 한다. 해설은 다음 장부터. (지면 사진을 넣으려면 이 장의 점선 상자를 지우고 [삽입 → 이미지 → 드라이브])' });
     // 듣기 섹션(Before you listen 제외)이고 대본이 있으면 '전체 듣기' 장 — 음성은 제미나이 TTS
     if (inp.script && /listen/i.test(sec.name_en) && !/before/i.test(sec.name_en)) {
-      D.push({ kind: 'listen', sec: sec.name_en, ref, audioKey: 'full', title_en: 'Listen', title_ko: '전체 듣기 — 대화를 처음부터 끝까지 듣습니다',
+      D.push({ kind: 'listen', sec: sec.name_en, ref, audioKey: 'full', title_en: 'Listen', title_ko: '전체 듣기 — 녹음을 처음부터 끝까지 듣습니다',
         notes: '▶ 버튼을 누르면 드라이브 재생 창이 열린다. 슬라이드 안에서 재생하려면 삽입 → 오디오 → 드라이브에서 같은 파일. 합성 음성(TTS) 대체 음원임을 말해 둔다.' });
     }
     st.sections[i].forEach(s => {
@@ -410,13 +410,13 @@ function rListen_(P, c, s, i) {
   const a = c.audio && c.audio[s.audioKey];
   P.text(40, BODY_TOP, 420, 120, [
     { t: 'LISTEN · 듣기', st: { f: MO, s: 8.5, c: c.brand } },
-    { t: 'Listen to the whole conversation first. Don\u2019t stop \u2014 just get the big picture.', st: { f: EN, s: 18, b: true, c: INK }, pa: { sa: 8, ls: 110 } },
-    { t: '먼저 대화를 끝까지 들어 보세요. 멈추지 말고 큰 그림만 잡습니다.', st: { f: KO, s: 11.5, c: INK3 }, pa: { sa: 6, ls: 130 } }]);
-  if (a) audioButton_(P, c, a, 44, BODY_TOP + 140, 300, 48, '\u25B6  전체 듣기  ' + mmss_(a.secs));
+    { t: 'Listen to the whole recording first. Don\u2019t stop \u2014 just get the big picture.', st: { f: EN, s: 18, b: true, c: INK }, pa: { sa: 8, ls: 110 } },
+    { t: '먼저 녹음을 끝까지 들어 보세요. 멈추지 말고 큰 그림만 잡습니다.', st: { f: KO, s: 11.5, c: INK3 }, pa: { sa: 6, ls: 130 } }]);
+  if (a) audioButton_(P, c, a, 44, BODY_TOP + 140, 300, 48, '\u25B6  전체 듣기' + (a.secs ? '  ' + mmss_(a.secs) : ''));
   else P.text(44, BODY_TOP + 140, 420, 48, [{ t: '음성 파일이 아직 없습니다 — 교재 음원을 드라이브에 올려 이 자리에 연결하세요.', st: { f: KO, s: 10.5, c: INK3 } }],
     { type: 'ROUND_RECTANGLE', fill: '#FAFAFA', line: '#D6D6D6', dash: 'DASH', middle: true });
-  P.text(40, 330, 640, 32, [{ t: '합성 음성(제미나이 TTS) 대체 음원입니다 · 슬라이드 안에서 바로 재생하려면 편집기에서 삽입 → 오디오 → 드라이브의 같은 파일', st: { f: KO, s: 8.5, c: INK3 } }]);
-  focus_(P, c, { label: 'TRACK', big: a ? mmss_(a.secs) : '—', ko: a ? a.name : '' });
+  P.text(40, 330, 640, 32, [{ t: (a && a.own ? '선생님이 연결한 음원입니다' : '합성 음성(제미나이 TTS) 대체 음원입니다') + ' · 슬라이드 안에서 바로 재생하려면 편집기에서 삽입 → 오디오 → 드라이브의 같은 파일', st: { f: KO, s: 8.5, c: INK3 } }]);
+  focus_(P, c, { label: 'TRACK', big: a ? (a.secs ? mmss_(a.secs) : '\u25B6') : '—', ko: a ? a.name : '' });
 }
 
 /** ▶ 버튼: 누르면 드라이브 재생 창 */

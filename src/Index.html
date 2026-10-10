@@ -139,6 +139,7 @@
         <div class="grid" style="margin-top:8px">
           <div class="w4"><label>개요 영상 <small>표지 다음 장 · NotebookLM 동영상 개요를 내려받아 드라이브에 올린 링크도 됩니다</small></label><input name="videoOverview" placeholder="예: https://drive.google.com/file/d/…/view"></div>
           <div class="w4"><label>섹션 복습 영상 <small>줄마다 하나, 섹션 순서대로 (그 섹션이 없으면 빈 줄) · 섹션 끝에 들어갑니다</small></label><textarea name="videoSections" rows="3"></textarea></div>
+          <div class="w4"><label>듣기 음원 <small>선택 · 교재 원음이나 직접 만든 음원(mp3)의 드라이브 링크 — 넣으면 합성 음성 대신 듣기 장에 들어갑니다</small></label><input name="audioFull" placeholder="예: https://drive.google.com/file/d/…/view"></div>
         </div></div>
     </div>
     <div class="row" style="margin-top:18px">
@@ -181,6 +182,7 @@
       <div class="grid">
         <div class="w4"><label>개요 영상 링크</label><input id="rvOverview" placeholder="드라이브 영상 또는 유튜브 링크"></div>
         <div class="w4"><label>섹션 복습 영상 <small>줄마다, 섹션 순서대로</small></label><textarea id="rvSections" rows="2"></textarea></div>
+        <div class="w4"><label>듣기 음원 링크 <small>있으면 합성 음성 대신</small></label><input id="rvAudio" placeholder="드라이브 mp3 링크"></div>
       </div>
       <div class="row" style="margin-top:10px"><button class="primary" type="button" id="relinkBtn" onclick="relink()">영상 넣고 다시 만들기</button><button type="button" onclick="relink()">HTML 덱·슬라이드만 다시 만들기</button>
         <span class="note" style="margin:0">제미나이 글 생성은 다시 하지 않습니다 · 약 1–2분 · 교수용·학생용 슬라이드와 퀴즈 폼을 새로 만듭니다</span></div>
@@ -279,7 +281,7 @@ function audioAll(){var n=job.audio||0;if(!n)return Promise.resolve('대본이 �
     mark('audio','run',(ok+reused)+' / '+n+' 만드는 중…');
     return call('step3_audio',job.folderId,i).then(function(r){if(r.reused)reused++;else if(!r.skipped)ok++;})
       .catch(function(e){fails.push(e&&e.message||e)}).then(worker);}
-  return Promise.all([worker(),worker()]).then(function(){
+  return Promise.all([worker(),worker()]).then(function(){return call('step3_audioMerge',job.folderId).catch(function(e){fails.push(e&&e.message||e)})}).then(function(){
     return (ok+reused)+' / '+n+'개 준비'+(reused?' (이전 것 '+reused+'개 재사용)':'')+(fails.length?' · 실패 '+fails.length+'개 — '+String(fails[0]).slice(0,80):'');});}
 function loop(){
   var s=STEPS[job.at];
@@ -301,11 +303,11 @@ function done(){$('go').disabled=false;var r=job.result;$('result').style.displa
   $('flagWrap').innerHTML=r.flags.length?'<details open><summary>검증 경고 '+r.flags.length+'건 — 슬라이드에서 확인할 곳</summary><ul class="flags">'+r.flags.map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul></details>'
     :'<p class="note">검증 경고 없음 — 대본·정답·퀴즈 근거가 모두 원문에서 확인되었습니다.</p>';
   $('nlmRecord').href=r.recordUrl;
-  var f=$('f').elements;$('rvOverview').value=f.videoOverview.value;$('rvSections').value=f.videoSections.value;
+  var f=$('f').elements;$('rvOverview').value=f.videoOverview.value;$('rvSections').value=f.videoSections.value;$('rvAudio').value=f.audioFull.value;
   $('result').scrollIntoView({behavior:'smooth'});}
 function relink(){if(!job.folderId)return;
-  $('relinkBtn').disabled=true;var f=$('f').elements;f.videoOverview.value=$('rvOverview').value;f.videoSections.value=$('rvSections').value;
-  call('setVideos',job.folderId,{videoOverview:$('rvOverview').value,videoSections:$('rvSections').value}).then(function(){
+  $('relinkBtn').disabled=true;var f=$('f').elements;f.videoOverview.value=$('rvOverview').value;f.videoSections.value=$('rvSections').value;f.audioFull.value=$('rvAudio').value;
+  call('setVideos',job.folderId,{videoOverview:$('rvOverview').value,videoSections:$('rvSections').value,audioFull:$('rvAudio').value}).then(function(){
     $('relinkBtn').disabled=false;
     var k=STEPS.map(function(s){return s.id}).indexOf('assemble');job.at=k;
     STEPS.slice(k).forEach(function(s){mark(s.id,'',null,'')});
@@ -318,7 +320,7 @@ function openOld(){var id=$('jobSel').value;if(!id)return;
   call('openJob',id).then(function(j){job={folderId:j.folderId,folderUrl:j.folderUrl,sections:j.sections,at:0};plan();
     var k=STEPS.map(function(s){return s.id}).indexOf('assemble');
     STEPS.slice(0,k).forEach(function(s){s.done=true;mark(s.id,'ok','이전 결과','')});job.at=k;
-    var f=$('f').elements;f.videoOverview.value=j.videoOverview;f.videoSections.value=j.videoSections;
+    var f=$('f').elements;f.videoOverview.value=j.videoOverview;f.videoSections.value=j.videoSections;f.audioFull.value=j.audioFull||'';
     $('progress').style.display='block';
     if(j.result){job.result=j.result;done();}
     else{$('result').style.display='none';$('errMsg').innerHTML='<b>이어서 만들 수 있습니다.</b> 조립 단계부터 다시 합니다.';$('errBox').style.display='block';}

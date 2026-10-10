@@ -135,8 +135,15 @@ function step3_assemble(folderId) {
 /** 오디오 할 일: 대본 전체(듣기 장) + 대본 장마다 그 장의 줄 */
 function audioJobsFor_(st) {
   const jobs = [];
-  if (st.deck.some(s => s.kind === 'listen')) {
-    jobs.push(audioJob_('full', '듣기_대본_전체', st.input.script.split(/\n+/)));
+  st.audioMerge = [];
+  if (st.input.audioFull) {
+    try { linkOwnAudio_(st.folderId, st.input.audioFull); } catch (e) { st.flags.push('[음원] 듣기 음원 링크를 열 수 없습니다: ' + e.message); }
+  } else if (st.deck.some(s => s.kind === 'listen')) {
+    const own = loadPart_(st.folderId, '오디오_full.json');
+    if (own && own.own) DriveApp.getFolderById(st.folderId).getFilesByName('오디오_full.json').next().setTrashed(true); // 링크를 지웠으면 합성 음성으로
+    const sp = splitAudioJob_('full', '듣기_대본_전체', st.input.script.split(/\n+/));
+    sp.jobs.forEach(j => jobs.push(j));
+    if (sp.merge) st.audioMerge.push(sp.merge);
   }
   st.deck.forEach((s, i) => {
     if (s.kind !== 'script') return;
@@ -153,6 +160,7 @@ function setVideos(folderId, f) {
   st.input.videos = parseVideos_(f);
   st.input.videoOverview = String(f.videoOverview || '');
   st.input.videoSections = String(f.videoSections || '');
+  st.input.audioFull = String(f.audioFull || '').trim();
   saveState_(st);
   return { overview: !!st.input.videos.overview, sections: st.input.videos.sections.filter(Boolean).length };
 }
@@ -330,7 +338,7 @@ function openJob(folderId) {
   return {
     folderId, folderUrl: st.folderUrl, folderName: st.folderName,
     sections: st.outline.sections.map(s => s.name_en),
-    videoOverview: st.input.videoOverview || '', videoSections: st.input.videoSections || '',
+    videoOverview: st.input.videoOverview || '', videoSections: st.input.videoSections || '', audioFull: st.input.audioFull || '',
     result: st.finished ? {
       folderUrl: st.folderUrl, folderName: st.folderName, teacherUrl: st.teacherUrl, studentUrl: st.studentUrl,
       formUrl: st.formUrl, formEditUrl: st.formEditUrl, recordUrl: st.recordUrl, total: st.deck.length, flags: st.flags,
@@ -354,7 +362,7 @@ function cleanInput_(f) {
     unit: s('unit'), title: s('title'), book: s('book'), pages: s('pages'),
     sections: s('sections').split(/\n+/).map(x => x.trim()).filter(Boolean),
     source: s('source'), script: s('script'), answers: s('answers'), plan: s('plan'),
-    pageImages: parseImages_(f.pageImages), videos: parseVideos_(f),
+    pageImages: parseImages_(f.pageImages), videos: parseVideos_(f), audioFull: s('audioFull'),
     videoOverview: s('videoOverview'), videoSections: s('videoSections'),
     goals: s('goals'), lastClass: s('lastClass'), assignment: s('assignment'),
     target: Math.min(60, Math.max(30, parseInt(s('target'), 10) || 48)),

@@ -63,7 +63,7 @@ function htmlSlides_(st, media) {
   const aud = (key, label) => {
     const a = audio[key];
     if (!a || !embedAudio_(a, key, media)) return '';
-    return `<div class="aud"><audio controls preload="metadata" data-aud="${key}"></audio><span class="aud-l">${escH_(label)} · ${mmss_(a.secs)} · <em>TTS 대체 음원</em></span></div>`;
+    return `<div class="aud"><audio controls preload="metadata" data-aud="${key}"></audio><span class="aud-l">${escH_(label)}${a.secs ? ' · ' + mmss_(a.secs) : ''}${a.own ? '' : ' · <em>TTS 대체 음원</em>'}</span></div>`;
   };
 
   for (let i = 0; i < D.length; i++) {
@@ -136,7 +136,7 @@ function htmlSlides_(st, media) {
       const tags = (s.tags || []).map(t => typeof t === 'string' ? `<span class="tag">${escH_(t)}</span>` : `<span class="tag a">${escH_(t.t)}</span>`).join('');
       const main = (tags ? `<div class="tags">${tags}</div>` : '') + `<div class="pairs-n">${pair(s.key, 'key')}${pairs}</div>`;
       const body = s.focus
-        ? `<div class="split2"><div>${main}</div><div class="focus"><div class="f-label">${escH_(s.focus.label)}</div><div class="f-big">${escH_(s.focus.big)}</div><div class="f-ko">${escH_(s.focus.ko)}</div></div></div>`
+        ? `<div class="split2"><div>${main}</div><div class="focus"><div class="f-label">${escH_(s.focus.label)}</div><div class="f-big" style="${bigSize_(s.focus.big)}">${escH_(s.focus.big)}</div><div class="f-ko">${escH_(s.focus.ko)}</div></div></div>`
         : main;
       h = `<section class="slide"><div class="orb-soft"></div>${head(s)}<div class="body mid">${body}</div>${foot(s.notes)}</section>`;
     }
@@ -155,7 +155,7 @@ function questionHtml_(q, a) {
     if (hit) {
       return label.replace('</span></div>', ' · 보기를 누른 뒤 → 로 채점</span></div>') +
         `<div class="ix"><div class="row" data-a="${escH_(hit)}"><div class="idx">${escH_((q.label.match(/\d+/) || ['Q'])[0])}</div><div class="main">` +
-        `<div class="q">${emH_(q.q_en)}</div><div class="q-ko">${emH_(q.q_ko)}</div><div class="opts">${q.options.map(o => `<button class="opt">${escH_(o)}</button>`).join('')}</div>` +
+        `<div class="q">${emH_(noNum_(q.q_en))}</div><div class="q-ko">${emH_(noNum_(q.q_ko))}</div><div class="opts">${q.options.map(o => `<button class="opt">${escH_(o)}</button>`).join('')}</div>` +
         `</div></div><div class="fb"></div></div>${answerBox_(a, true)}`;
     }
   }
@@ -163,10 +163,15 @@ function questionHtml_(q, a) {
     const gap = `<input class="gap" type="text" autocomplete="off" spellcheck="false" style="width:${Math.min(320, 60 + ans.length * 9)}px">`;
     return label.replace('</span></div>', ' · 빈칸에 쓰고 Enter 또는 → 로 채점</span></div>') +
       `<div class="ix"><div class="row" data-a="${escH_(ans)}"><div class="idx">${escH_((q.label.match(/\d+/) || ['Q'])[0])}</div><div class="main">` +
-      `<div class="q">${escH_(q.q_en).replace(/_{3,}/, gap)}</div><div class="q-ko">${emH_(q.q_ko)}</div></div></div><div class="fb"></div></div>${answerBox_(a, true)}`;
+      `<div class="q">${escH_(noNum_(q.q_en)).replace(/_{3,}/, gap)}</div><div class="q-ko">${emH_(noNum_(q.q_ko))}</div></div></div><div class="fb"></div></div>${answerBox_(a, true)}`;
   }
   return label + `<div class="q"><div class="q-en">${emH_(q.q_en)}</div><div class="q-ko">${emH_(q.q_ko)}</div></div>` + (a ? answerBox_(a, true) : '');
 }
+
+/** 포커스 패널의 큰 글자: 길면 줄인다 (패널 폭 292px) */
+function bigSize_(t) { const n = String(t || '').length; return n > 14 ? 'font-size:22px;letter-spacing:-.01em' : n > 9 ? 'font-size:30px' : ''; }
+/** 문항 앞 번호("1 ", "2. ")는 번호 동그라미가 따로 있으므로 뺀다 */
+function noNum_(t) { return String(t || '').replace(/^\s*\d+[.)]?\s+/, ''); }
 
 function answerBox_(a, step) {
   return `<div class="answer${step ? ' st' : ''}"><div class="a-label">Answer · 정답과 해설</div><div class="a-en">${emH_(a.answer_en)}</div>` +

@@ -56,6 +56,58 @@ function audioJob_(key, title, lines) {
   return { key, title, speakers: multi ? names : [], text: body };
 }
 
+/**
+ * 긴 대본(강의 4분 등)은 한 번에 읽히면 끝나지 않는다 → 문장 단위로 700자 안팎씩 나눈 할 일들로 만든다.
+ * 나눈 조각은 step3_audioMerge가 한 파일로 잇는다.
+ */
+function splitAudioJob_(key, title, lines) {
+  const job = audioJob_(key, title, lines);
+  if (job.text.length <= 900) return { jobs: [job], merge: null };
+  const sents = job.text.match(/[^.!?\n]+[.!?]+["')\]]*\s*|[^.!?\n]+$|\n/g) || [job.text];
+  const chunks = [];
+  let cur = '';
+  sents.forEach(t => { if ((cur + t).length > 700 && cur.trim()) { chunks.push(cur.trim()); cur = ''; } cur += t; });
+  if (cur.trim()) chunks.push(cur.trim());
+  const jobs = chunks.map((t, i) => Object.assign({}, job, { key: `${key}__${i + 1}`, title: `${title}_${i + 1}`, text: t }));
+  return { jobs, merge: { key, title, parts: jobs.map(j => j.key) } };
+}
+
+/** 나눠 만든 조각 음성을 한 WAV로 잇는다 (머리말 54바이트, 조각은 6바이트 단위로 맞춰 base64 글자째로) */
+function step3_audioMerge(folderId) {
+  const st = loadState_(folderId);
+  const merged = [];
+  (st.audioMerge || []).forEach(m => {
+    if (loadPart_(folderId, `오디오_${m.key}.json`)) return;
+    const parts = m.parts.map(k => loadPart_(folderId, `오디오_${k}.json`));
+    if (parts.some(p => !p)) return; // 조각이 덜 됐으면 다음에
+    let b64 = '', bytes = 0, rate = 24000;
+    parts.forEach(p => {
+      const all = Utilities.base64Encode(DriveApp.getFileById(p.id).getBlob().getBytes());
+      const pcmLen = Math.floor(all.length / 4) * 3 - 54 - (all.endsWith('==') ? 2 : all.endsWith('=') ? 1 : 0);
+      const keep = pcmLen - (pcmLen % 6); // 3의 배수이면서 샘플(2바이트) 단위
+      b64 += all.substr(72, keep / 3 * 4);
+      bytes += keep;
+    });
+    const name = `${m.title}.wav`;
+    const file = mediaFolder_(folderId).createFile(pcmToWav_(b64, rate, name));
+    const info = { key: m.key, id: file.getId(), url: `https://drive.google.com/file/d/${file.getId()}/view`,
+      secs: Math.round(bytes / (rate * 2)), name, model: '조각 ' + parts.length + '개 이음' };
+    savePart_(folderId, `오디오_${m.key}.json`, info);
+    merged.push(info);
+  });
+  return { merged: merged.length };
+}
+
+/** 선생님이 준 음원(드라이브 링크)을 'full' 자리에 쓴다 — 합성 음성보다 우선 */
+function linkOwnAudio_(folderId, link) {
+  const id = (String(link || '').match(/[-\w]{25,}/) || [])[0];
+  if (!id) return null;
+  const f = DriveApp.getFileById(id);
+  const info = { key: 'full', id, url: `https://drive.google.com/file/d/${id}/view`, secs: 0, name: f.getName(), model: '선생님 음원', own: true };
+  savePart_(folderId, '오디오_full.json', info);
+  return info;
+}
+
 function step3_audio(folderId, k) {
   const st = loadState_(folderId);
   const job = st.audioJobs[k];
