@@ -5,8 +5,8 @@
  *
  * 화면(Index.html)이 아래 step 함수를 차례로 부른다.
  *  1 step1_start     폴더 만들기 + 입력 저장 + 덱 뼈대 (제미나이)
- *  2 step2_section   섹션별 슬라이드 내용 (제미나이, 섹션마다 한 번)
- *    step2_quiz      확인 퀴즈 문항 (제미나이)
+ *  2 step2_section   섹션별 슬라이드 내용 (제미나이, 섹션마다 한 번) ┐ 화면이 한꺼번에 부른다
+ *    step2_quiz      확인 퀴즈 문항 (제미나이)                    ┘
  *  3 step3_assemble  원문 대조 검증 + 한 장 한 호흡으로 나누기 + 전체 순서 확정
  *  4 step4_build     교수용 구글 슬라이드
  *  5 step5_student   학생용 사본 (정답 장·강의 노트 제외)
@@ -64,6 +64,9 @@ function step0_folder(form) {
 function step1_start(folderId) {
   const st = loadState_(folderId);
   const res = callGemini_(outlinePrompt_(st.input));
+  // 뼈대를 새로 짜면 예전 섹션·퀴즈 결과는 맞지 않으므로 지운다
+  const files = DriveApp.getFolderById(folderId).getFiles();
+  while (files.hasNext()) { const f = files.next(); if (/^(섹션_\d+|퀴즈)\.json$/.test(f.getName())) f.setTrashed(true); }
   st.flags = [];
   st.models = ['뼈대: ' + res.model];
   st.outline = checkOutline_(parseJson_(res.text), st.input, st.flags);
@@ -72,42 +75,48 @@ function step1_start(folderId) {
   return { title: st.outline.title_en, sections: st.outline.sections.map(s => s.name_en), model: res.model };
 }
 
-// ───────────────────────── 2′. 퀴즈 문항 ─────────────────────────
-
-function step2_quiz(folderId) {
-  const st = loadState_(folderId);
-  const res = callGemini_(quizPrompt_(st.input, st.outline));
-  const raw = parseJson_(res.text);
-  st.flags = st.flags.filter(f => f.indexOf('[퀴즈]') !== 0);
-  st.outline.quiz = checkQuiz_(Array.isArray(raw) ? raw : raw.quiz, st.input, st.flags);
-  if (st.outline.quiz.length < 5) st.flags.push(`[퀴즈] 원문으로 확인되는 문항이 ${st.outline.quiz.length}개뿐입니다.`);
-  st.models.push('퀴즈: ' + res.model);
-  saveState_(st);
-  return { count: st.outline.quiz.length, model: res.model };
-}
-
-// ───────────────────────── 2. 섹션 내용 ─────────────────────────
+// ───────────────────────── 2. 섹션 내용 · 퀴즈 (동시에) ─────────────────────────
+// 섹션마다 제미나이가 1–3분 걸린다. 화면이 섹션들과 퀴즈를 한꺼번에 부르므로,
+// 서로 덮어쓰지 않게 각자 자기 파일(섹션_1.json …, 퀴즈.json)에만 쓰고 3단계에서 합친다.
 
 function step2_section(folderId, i) {
   const st = loadState_(folderId);
   const sec = st.outline.sections[i];
   const res = callGemini_(sectionPrompt_(st.input, st.outline, i));
   const raw = parseJson_(res.text);
-  st.flags = st.flags.filter(f => f.indexOf(`[${sec.name_en}]`) !== 0); // 다시 만들면 예전 경고는 지움
-  st.sections[i] = checkSectionSlides_(Array.isArray(raw) ? raw : raw.slides, st.input, sec, st.flags);
-  st.models.push(`${sec.name_en}: ${res.model}`);
-  saveState_(st);
-  return { name: sec.name_en, count: st.sections[i].length, model: res.model };
+  const flags = [];
+  const slides = checkSectionSlides_(Array.isArray(raw) ? raw : raw.slides, st.input, sec, flags);
+  savePart_(folderId, `섹션_${i + 1}.json`, { slides, flags, model: `${sec.name_en}: ${res.model}` });
+  return { name: sec.name_en, count: slides.length, model: res.model };
+}
+
+function step2_quiz(folderId) {
+  const st = loadState_(folderId);
+  const res = callGemini_(quizPrompt_(st.input, st.outline));
+  const raw = parseJson_(res.text);
+  const flags = [];
+  const quiz = checkQuiz_(Array.isArray(raw) ? raw : raw.quiz, st.input, flags);
+  if (quiz.length < 5) flags.push(`[퀴즈] 원문으로 확인되는 문항이 ${quiz.length}개뿐입니다.`);
+  savePart_(folderId, '퀴즈.json', { quiz, flags, model: '퀴즈: ' + res.model });
+  return { count: quiz.length, model: res.model };
 }
 
 // ───────────────────────── 3. 조립 ─────────────────────────
 
 function step3_assemble(folderId) {
   const st = loadState_(folderId);
-  if (st.sections.some(s => !s)) throw new Error('아직 내용이 없는 섹션이 있습니다. 2단계를 먼저 끝내 주세요.');
+  const parts = st.outline.sections.map((s, i) => loadPart_(folderId, `섹션_${i + 1}.json`));
+  const missing = parts.map((p, i) => (p ? null : st.outline.sections[i].name_en)).filter(Boolean);
+  if (missing.length) throw new Error('아직 내용이 없는 섹션이 있습니다: ' + missing.join(', '));
+  const quiz = loadPart_(folderId, '퀴즈.json');
+  if (!quiz) throw new Error('퀴즈 문항이 아직 없습니다.');
+  st.sections = parts.map(p => p.slides);
+  st.outline.quiz = quiz.quiz;
+  st.flags = st.flags.filter(f => /^\[(표현 모음|과제)\]/.test(f))
+    .concat(...parts.map(p => p.flags), quiz.flags);
+  st.models = st.models.filter(m => m.indexOf('뼈대') === 0).concat(parts.map(p => p.model), [quiz.model]);
   st.deck = assembleDeck_(st);
   const n = st.deck.length;
-  st.flags = st.flags.filter(f => f.indexOf('[분량]') !== 0);
   if (n < 45 || n > 60) st.flags.push(`[분량] ${n}장 — 60분 차시 기준(45–60장)을 벗어났습니다. 원문 양에 따라 달라질 수 있습니다.`);
   saveState_(st);
   return {
@@ -307,6 +316,18 @@ function saveState_(st) {
   const text = JSON.stringify(st, null, 1);
   if (it.hasNext()) it.next().setContent(text);
   else folder.createFile(STATE_FILE, text, MimeType.PLAIN_TEXT);
+}
+
+function savePart_(folderId, name, obj) {
+  const folder = DriveApp.getFolderById(folderId);
+  const it = folder.getFilesByName(name);
+  const text = JSON.stringify(obj);
+  if (it.hasNext()) it.next().setContent(text); else folder.createFile(name, text, MimeType.PLAIN_TEXT);
+}
+
+function loadPart_(folderId, name) {
+  const it = DriveApp.getFolderById(folderId).getFilesByName(name);
+  return it.hasNext() ? JSON.parse(it.next().getBlob().getDataAsString('UTF-8')) : null;
 }
 
 function trash_(id) {

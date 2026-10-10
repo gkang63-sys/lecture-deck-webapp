@@ -173,8 +173,8 @@ call('getSettings').then(showKey).catch(function(){$('keyPill').textContent='확
 var job={folderId:null,sections:[],at:0,t0:0};
 var STEPS=[];
 function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대',d:'제미나이'}];
-  job.sections.forEach(function(n,i){STEPS.push({id:'sec'+i,i:i,t:'섹션 '+(i+1)+' · '+n,d:'제미나이 — 해설·문항·정답'})});
-  STEPS.push({id:'quizgen',t:'확인 퀴즈 문항',d:'제미나이 — 원문에서 정답을 확인할 수 있는 문항만'},{id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
+  job.sections.forEach(function(n,i){STEPS.push({id:'sec'+i,i:i,par:1,t:'섹션 '+(i+1)+' · '+n,d:'제미나이 — 해설·문항·정답 (섹션들을 동시에 만듭니다)'})});
+  STEPS.push({id:'quizgen',par:1,t:'확인 퀴즈 문항',d:'제미나이 — 원문에서 정답을 확인할 수 있는 문항만'},{id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
     {id:'build',t:'교수용 구글 슬라이드',d:'정답 장·강의 노트 포함'},
     {id:'student',t:'학생용 사본',d:'정답 장과 강의 노트를 뺀 사본'},
     {id:'quiz',t:'퀴즈 폼',d:'퀴즈 모드 · 정답·배점·해설'},
@@ -212,14 +212,26 @@ function runStep(s){
   if(s.id==='quiz') return call('step6_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.points+'점 만점'});
   if(s.id==='finish') return call('step7_finish',job.folderId).then(function(r){job.result=r;return r.folderName});}
 
+function fail(err){$('errMsg').innerHTML='<b>멈췄습니다.</b> '+esc(err&&err.message||err);$('errBox').style.display='block';$('go').disabled=false;}
+/* 섹션들과 퀴즈는 한꺼번에 부른다 — 서버가 각자 따로 저장하므로 겹쳐도 괜찮다 */
+function runGroup(){
+  var group=[];for(var k=job.at;k<STEPS.length&&STEPS[k].par;k++)group.push(STEPS[k]);
+  var todo=group.filter(function(s){return !s.done});
+  var errs=[];
+  return Promise.all(todo.map(function(s){var t=Date.now();mark(s.id,'run',null,'');
+    var tick=setInterval(function(){mark(s.id,'run',null,secs(t))},1000);
+    return runStep(s).then(function(msg){clearInterval(tick);s.done=true;mark(s.id,'ok',msg,secs(t));})
+      .catch(function(e){clearInterval(tick);mark(s.id,'err',null,secs(t));errs.push(s.t+': '+(e&&e.message||e));});}))
+  .then(function(){if(errs.length){fail({message:errs.join(' / ')+' — [이 단계 다시]를 누르면 실패한 것만 다시 만듭니다.'});return}
+    job.at+=group.length;loop();});}
 function loop(){
   var s=STEPS[job.at];
   if(!s){done();return}
+  if(s.par){runGroup();return}
   var t=Date.now();mark(s.id,'run',null,'');
   var tick=setInterval(function(){mark(s.id,'run',null,secs(t))},1000);
   runStep(s).then(function(msg){clearInterval(tick);mark(s.id,'ok',msg,secs(t));job.at++;loop();})
-  .catch(function(err){clearInterval(tick);mark(s.id,'err',null,secs(t));
-    $('errMsg').innerHTML='<b>멈췄습니다.</b> '+esc(err&&err.message||err);$('errBox').style.display='block';$('go').disabled=false;});}
+  .catch(function(err){clearInterval(tick);mark(s.id,'err',null,secs(t));fail(err);});}
 function resume(){$('errBox').style.display='none';$('go').disabled=true;loop();}
 
 function done(){$('go').disabled=false;var r=job.result;$('result').style.display='block';
