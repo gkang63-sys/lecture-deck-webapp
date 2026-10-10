@@ -57,8 +57,11 @@ function extractFile(fileId, role) {
   let blob = file.getBlob();
   if (blob.getBytes().length > 15 * 1024 * 1024) throw new Error(`${name}: 15MB가 넘습니다. 쪽을 나눠 올려 주세요.`);
 
-  const res = callGemini_(readPrompt_(role), [blob]);
-  const r = parseJson_(res.text);
+  let res = callGemini_(readPrompt_(role), [blob]), r;
+  try { r = parseJson_(res.text); } catch (e) {
+    res = callGemini_(readPrompt_(role) + '\n주의: 올바른 JSON 하나만. 문자열 속 큰따옴표는 \\" 로.', [blob]);
+    r = parseJson_(res.text);
+  }
   const out = {
     source: str_(r.source), script: str_(r.script), answers: str_(r.answers), plan: str_(r.notes),
     page: str_(r.page), model: res.model,

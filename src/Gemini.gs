@@ -11,7 +11,7 @@ const MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gem
 const NEED = '[원문 필요]';
 
 /** blobs: PDF·사진을 함께 보낼 때 (제미나이가 지면을 직접 읽음) */
-function callGemini_(prompt, blobs) {
+function callGemini_(prompt, blobs, startedAt) {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!key) throw new Error('Gemini API 키가 없습니다. 화면 위쪽 [API 키]에서 먼저 저장해 주세요.');
   const parts = (blobs || []).map(b => ({ inline_data: { mime_type: b.getContentType(), data: Utilities.base64Encode(b.getBytes()) } }));
@@ -23,7 +23,7 @@ function callGemini_(prompt, blobs) {
   });
   // Apps Script는 한 번에 6분까지만 돈다. 4분 30초가 지나면 새로 시도하지 않고 멈춰서,
   // 화면이 [이 단계 다시]를 보여 줄 수 있게 한다 (6분에 잘리면 이유도 모른 채 끝난다).
-  const started = Date.now(), budget = 270 * 1000;
+  const started = startedAt || Date.now(), budget = 270 * 1000;
   let lastError = '';
   for (const model of MODELS) {
     let thinking = true; // '생각'을 짧게 — 속도가 크게 빨라진다. 이 설정을 모르는 모델이면 빼고 다시.
@@ -54,6 +54,23 @@ function callGemini_(prompt, blobs) {
     if (Date.now() - started > budget) break;
   }
   throw new Error('제미나이가 제때 응답하지 않았습니다 (서버 혼잡). 잠시 뒤 [이 단계 다시]를 눌러 주세요. ' + lastError);
+}
+
+/**
+ * 제미나이를 불러 JSON으로 받는다. 가끔 문장 속 큰따옴표를 이스케이프하지 않아 JSON이 깨지므로,
+ * 깨지면 그 답을 결과 폴더에 남기고(원인 확인용) 주의를 덧붙여 한 번 더 부른다.
+ */
+function geminiJson_(prompt, folderId, label) {
+  const started = Date.now(); // 다시 부를 때도 같은 시간 예산을 나눠 쓴다 (한 번 실행 6분 제한)
+  let res = callGemini_(prompt, null, started);
+  try { return { json: parseJson_(res.text), model: res.model }; } catch (e) {
+    if (folderId) {
+      try { DriveApp.getFolderById(folderId).createFile(`_깨진답_${label || 'gemini'}.txt`, res.text, MimeType.PLAIN_TEXT); } catch (e2) { /* 기록 실패는 무시 */ }
+    }
+    if (Date.now() - started > 200 * 1000) throw new Error('제미나이 답이 올바른 JSON이 아니었습니다. [이 단계 다시]를 눌러 주세요.');
+    res = callGemini_(prompt + '\n\n주의: 앞선 답이 올바른 JSON이 아니었습니다. 문자열 안에 큰따옴표가 필요하면 \\" 로 이스케이프하거나 작은따옴표를 쓰세요. JSON 하나만 답하세요.', null, started);
+    return { json: parseJson_(res.text), model: res.model + ' (재시도)' };
+  }
 }
 
 /**
@@ -252,8 +269,13 @@ function checkOutline_(o, inp, flags) {
   // 과제: 숫자·기한은 교사 입력에서만
   const a = o.assignment || {};
   a.requirements = (a.requirements || []).map(pair_).filter(Boolean).slice(0, 4);
-  a.rubric = (a.rubric || []).filter(Boolean).slice(0, 4).map(r => ({
-    t_en: str_(r.t_en), t_ko: str_(r.t_ko), en: str_(r.en), ko: str_(r.ko) }));
+  // 평가 기준은 모양이 자주 달라진다 (criteria·객체·다른 열쇠 이름) → 너그럽게 받는다
+  let rub = a.rubric || a.criteria || a.grading || a.evaluation || [];
+  if (!Array.isArray(rub)) rub = Object.keys(rub).map(k => (typeof rub[k] === 'object' ? Object.assign({ t_en: k }, rub[k]) : { t_en: k, en: String(rub[k]) }));
+  a.rubric = rub.filter(Boolean).slice(0, 4).map(r => (typeof r === 'string' ? { t_en: r, t_ko: '', en: '', ko: '' } : {
+    t_en: str_(r.t_en || r.title || r.name || r.criterion || r.label), t_ko: str_(r.t_ko || r.title_ko || r.name_ko),
+    en: str_(r.en || r.desc || r.description || r.detail), ko: str_(r.ko || r.desc_ko || r.description_ko) }))
+    .filter(r => r.t_en || r.t_ko);
   ['what', 'how', 'when'].forEach(k => { a[k] = pair_(a[k]) || { en: '[입력 필요]', ko: '[입력 필요]' }; });
   if (!inp.assignment) {
     a.due = '[기한 입력]';

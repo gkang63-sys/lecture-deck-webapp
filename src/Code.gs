@@ -63,13 +63,13 @@ function step0_folder(form) {
 
 function step1_start(folderId) {
   const st = loadState_(folderId);
-  const res = callGemini_(outlinePrompt_(st.input));
+  const res = geminiJson_(outlinePrompt_(st.input), folderId, '뼈대');
   // 뼈대를 새로 짜면 예전 섹션·퀴즈 결과는 맞지 않으므로 지운다
   const files = DriveApp.getFolderById(folderId).getFiles();
   while (files.hasNext()) { const f = files.next(); if (/^(섹션_\d+|퀴즈)\.json$/.test(f.getName())) f.setTrashed(true); }
   st.flags = [];
   st.models = ['뼈대: ' + res.model];
-  st.outline = checkOutline_(parseJson_(res.text), st.input, st.flags);
+  st.outline = checkOutline_(res.json, st.input, st.flags);
   st.sections = st.outline.sections.map(() => null);
   saveState_(st);
   return { title: st.outline.title_en, sections: st.outline.sections.map(s => s.name_en), model: res.model };
@@ -82,8 +82,8 @@ function step1_start(folderId) {
 function step2_section(folderId, i) {
   const st = loadState_(folderId);
   const sec = st.outline.sections[i];
-  const res = callGemini_(sectionPrompt_(st.input, st.outline, i));
-  const raw = parseJson_(res.text);
+  const res = geminiJson_(sectionPrompt_(st.input, st.outline, i), folderId, '섹션' + (i + 1));
+  const raw = res.json;
   const flags = [];
   const slides = checkSectionSlides_(Array.isArray(raw) ? raw : raw.slides, st.input, sec, flags);
   savePart_(folderId, `섹션_${i + 1}.json`, { slides, flags, model: `${sec.name_en}: ${res.model}` });
@@ -92,8 +92,8 @@ function step2_section(folderId, i) {
 
 function step2_quiz(folderId) {
   const st = loadState_(folderId);
-  const res = callGemini_(quizPrompt_(st.input, st.outline));
-  const raw = parseJson_(res.text);
+  const res = geminiJson_(quizPrompt_(st.input, st.outline), folderId, '퀴즈');
+  const raw = res.json;
   const flags = [];
   const quiz = checkQuiz_(Array.isArray(raw) ? raw : raw.quiz, st.input, flags);
   if (quiz.length < 5) flags.push(`[퀴즈] 원문으로 확인되는 문항이 ${quiz.length}개뿐입니다.`);
