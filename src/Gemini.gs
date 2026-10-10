@@ -10,24 +10,33 @@
 const MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-flash-latest'];
 const NEED = '[원문 필요]';
 
-function callGemini_(prompt) {
+/** blobs: PDF·사진을 함께 보낼 때 (제미나이가 지면을 직접 읽음) */
+function callGemini_(prompt, blobs) {
   const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!key) throw new Error('Gemini API 키가 없습니다. 화면 위쪽 [API 키]에서 먼저 저장해 주세요.');
-  const payload = JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.5 },
+  const parts = (blobs || []).map(b => ({ inline_data: { mime_type: b.getContentType(), data: Utilities.base64Encode(b.getBytes()) } }));
+  parts.push({ text: prompt });
+  const body = thinking => JSON.stringify({
+    contents: [{ parts }],
+    generationConfig: Object.assign({ responseMimeType: 'application/json', temperature: 0.5, maxOutputTokens: 32768 },
+      thinking ? { thinkingConfig: { thinkingLevel: 'low' } } : {}),
   });
+  // Apps Script는 한 번에 6분까지만 돈다. 4분 30초가 지나면 새로 시도하지 않고 멈춰서,
+  // 화면이 [이 단계 다시]를 보여 줄 수 있게 한다 (6분에 잘리면 이유도 모른 채 끝난다).
+  const started = Date.now(), budget = 270 * 1000;
   let lastError = '';
   for (const model of MODELS) {
+    let thinking = true; // '생각'을 짧게 — 속도가 크게 빨라진다. 이 설정을 모르는 모델이면 빼고 다시.
     // 서버가 붐빌 때(429·503)는 잠깐 기다렸다가 두 번 더 시도하고, 그래도 안 되면 다음 모델로
     for (const wait of [0, 4000, 10000]) {
+      if (Date.now() - started + wait > budget) break;
       if (wait) Utilities.sleep(wait);
       const res = UrlFetchApp.fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'post',
           contentType: 'application/json',
           headers: { 'x-goog-api-key': key },
-          payload,
+          payload: body(thinking),
           muteHttpExceptions: true,
         });
       const code = res.getResponseCode();
@@ -38,15 +47,36 @@ function callGemini_(prompt) {
         return { text, model };
       }
       lastError = `[${model}] ` + ((data.error && data.error.message) || ('HTTP ' + code));
+      if (code === 400 && thinking && /thinking/i.test(lastError)) { thinking = false; continue; }
       if (code === 400 || code === 401 || code === 403) throw new Error(lastError); // 키 문제는 다시 시도해도 같음
       if (code !== 429 && code !== 503 && code !== 500) break; // 모델 이름이 없는 경우(404) 등은 바로 다음 모델로
     }
+    if (Date.now() - started > budget) break;
   }
-  throw new Error('제미나이가 응답하지 않습니다 (서버 혼잡). 잠시 뒤 [이 단계 다시]를 눌러 주세요. ' + lastError);
+  throw new Error('제미나이가 제때 응답하지 않았습니다 (서버 혼잡). 잠시 뒤 [이 단계 다시]를 눌러 주세요. ' + lastError);
 }
 
+/**
+ * 제미나이 답에서 JSON을 꺼낸다. 가끔 JSON 뒤에 설명을 덧붙이거나 같은 JSON을 두 번 보내므로,
+ * 통째로 안 읽히면 첫 번째 { … } (또는 [ … ]) 덩어리만 괄호 짝을 세어 잘라 읽는다.
+ */
 function parseJson_(text) {
-  return JSON.parse(String(text).replace(/^\s*```(?:json)?\s*/i, '').replace(/```\s*$/, ''));
+  const t = String(text || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  try { return JSON.parse(t); } catch (e) { /* 아래에서 첫 덩어리만 */ }
+  const start = t.search(/[{\[]/);
+  if (start < 0) throw new Error('제미나이 답에 JSON이 없습니다. [이 단계 다시]를 눌러 주세요.');
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < t.length; i++) {
+    const ch = t[i];
+    if (inStr) {
+      if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      if (--depth === 0) return JSON.parse(t.slice(start, i + 1));
+    }
+  }
+  throw new Error('제미나이 답이 중간에 끊겼습니다 (너무 김). [이 단계 다시]를 눌러 주세요.');
 }
 
 // ───────────────────────── 프롬프트 ─────────────────────────
@@ -62,6 +92,8 @@ const RULES = [
   '7. 모든 장에 notes(한국어 강의 노트): 무엇을 시킬지, 시간(예: 짝 활동 2분), 학생이 틀리기 쉬운 지점. 슬라이드 글을 되풀이하지 않습니다.',
   '8. 섹션마다 제주·한국 예를 한 번 들어도 좋습니다. 단, 해설에서만 하고 교재 원문처럼 꾸미지 않습니다.',
   '9. 실제 학생 이름이나 개인 정보는 쓰지 않습니다.',
+  '10. [교안·지도서 해설]이 있으면 그 설명 순서와 문장을 뼈대로 삼습니다. 교안과 지도서 정답이 다르면 지도서를 따르고 notes에 적습니다.',
+  '11. [입력]의 교재 쪽수 범위 밖의 지면은 다루지 않습니다 (원문에 다른 쪽이 섞여 있어도).',
 ].join('\n');
 
 function inputBlock_(inp) {
@@ -81,13 +113,14 @@ function inputBlock_(inp) {
     '[교재 원문]', '"""', inp.source, '"""',
     '[듣기 대본]', '"""', inp.script || '(없음)', '"""',
     '[정답]', '"""', inp.answers || '(없음)', '"""',
+    '[교안·지도서 해설 (참고)]', '"""', inp.plan || '(없음)', '"""',
   ].join('\n');
 }
 
 function outlinePrompt_(inp) {
   return [
     '당신은 제주대학교 교양영어 강사의 강의 슬라이드 설계를 돕는 조교입니다.',
-    '아래 [입력]만 근거로 60분 차시 강의 덱의 뼈대와 확인 퀴즈를 JSON으로 만드세요.',
+    '아래 [입력]만 근거로 60분 차시 강의 덱의 뼈대를 JSON으로 만드세요.',
     '',
     inputBlock_(inp),
     '',
@@ -103,8 +136,7 @@ function outlinePrompt_(inp) {
     '  "sections": [{"name_en": "교재 섹션 이름 그대로", "name_ko": "그 섹션이 무엇을 하는 시간인지", "page_ref": "p.50", "starts_with": "이 섹션 원문의 첫 몇 단어 (원문 그대로)", "slides": 10}],',
     '  "phrasebook": {"title_en": "...", "title_ko": "...", "groups": [{"label": "묶음 이름", "items": ["원문에 있는 표현 그대로"]}], "notes": "..."},',
     '  "assignment": {"title_en": "...", "title_ko": "...", "what": {"en": "...", "ko": "..."}, "how": {"en": "...", "ko": "..."}, "when": {"en": "...", "ko": "..."}, "due": "...", "requirements": [{"en": "...", "ko": "..."}], "rubric": [{"t_en": "...", "t_ko": "...", "en": "...", "ko": "..."}], "notes": "..."},',
-    '  "close": {"key_en": "오늘 가져갈 한 문장", "key_ko": "...", "today_ko": "오늘 한 일 한 줄", "next_en": "...", "next_ko": "...", "notes": "..."},',
-    '  "quiz": [{"q": "영어 문항", "q_ko": "한국어 도움말", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기 중 하나와 똑같이", "points": 1, "explain_ko": "해설", "evidence": "근거 문장"}]',
+    '  "close": {"key_en": "오늘 가져갈 한 문장", "key_ko": "...", "today_ko": "오늘 한 일 한 줄", "next_en": "...", "next_ko": "...", "notes": "..."}',
     '}',
     '',
     '추가 규칙:',
@@ -115,8 +147,26 @@ function outlinePrompt_(inp) {
     '- phrasebook.groups는 3묶음 × 3개까지, items는 [교재 원문]이나 [듣기 대본]에 있는 표현을 글자 그대로.',
     '- 과제(assignment)의 분량·기한·형식 숫자는 [과제 안내]에 있는 것만 씁니다. 없으면 "[입력 필요]". due는 과제 안내의 기한을 그대로.',
     '- rubric은 정확히 4항목. 과제 안내에 평가 기준이 있으면 그대로, 없으면 일반 기준(내용·구성·언어·전달)으로 쓰되 배점 숫자는 과제 안내에 있을 때만.',
-    '- quiz는 8문항. [교재 원문]이나 [듣기 대본]으로 정답을 확인할 수 있는 문항만 냅니다. 상식 문제는 내지 않습니다.',
-    '- quiz.evidence는 정답의 근거가 되는 문장을 [교재 원문]이나 [듣기 대본]에서 한 글자도 바꾸지 말고 복사합니다.',
+  ].join('\n');
+}
+
+function quizPrompt_(inp, o) {
+  return [
+    '당신은 제주대학교 교양영어 강사의 조교입니다. 아래 [입력]만 근거로 수업 뒤 확인 퀴즈(구글 폼, 객관식)를 JSON으로 만드세요.',
+    '',
+    `[덱] ${o.title_en} — ${o.title_ko} · 섹션: ${o.sections.map(s => s.name_en).join(' / ')}`,
+    '',
+    inputBlock_(inp),
+    '',
+    '규칙:',
+    '- 8문항. [교재 원문]이나 [듣기 대본]으로 정답을 확인할 수 있는 문항만 냅니다. 상식 문제는 내지 않습니다.',
+    '- 교재 쪽수 범위 안의 내용만. 섹션마다 고르게.',
+    '- 보기는 4개, answer는 보기 중 하나와 글자까지 똑같이.',
+    '- evidence는 정답의 근거가 되는 문장을 [교재 원문]·[듣기 대본]·[정답]에서 한 글자도 바꾸지 말고 복사합니다.',
+    '- explain_ko는 왜 그것이 답인지 한국어 한두 문장.',
+    '',
+    '다음 JSON으로만 답하세요:',
+    '{"quiz": [{"q": "영어 문항", "q_ko": "한국어 도움말", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "보기 중 하나", "points": 1, "explain_ko": "...", "evidence": "근거 문장"}]}',
   ].join('\n');
 }
 
@@ -157,6 +207,8 @@ function sectionPrompt_(inp, o, i) {
 // ───────────────────────── 검증 ─────────────────────────
 
 /** 원문 대조용: 소문자 + 영문·숫자만 남김 (따옴표·띄어쓰기 차이는 무시) */
+/** 원문 대조에 쓰는 글 전체: 교재 원문 + 대본 + 정답 + 교안·지도서 */
+function srcAll_(inp) { return norm_([inp.source, inp.script, inp.answers, inp.plan].join(' ')); }
 function norm_(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 function inSource_(text, src) {
   const t = norm_(String(text || '').replace(/\*\*/g, ''));
@@ -169,7 +221,7 @@ function pair_(p) { return p && (str_(p.en) || str_(p.ko)) ? { en: str_(p.en), k
 
 function checkOutline_(o, inp, flags) {
   o = o || {};
-  const src = norm_([inp.source, inp.script, inp.answers].join(' '));
+  const src = srcAll_(inp);
   o.title_en = inp.title; // 제목은 교재 절 제목 그대로
   o.title_ko = str_(o.title_ko);
   o.intro = o.intro || {};
@@ -218,13 +270,12 @@ function checkOutline_(o, inp, flags) {
   o.assignment = a;
 
   o.close = o.close || {};
-  o.quiz = checkQuiz_(o.quiz, inp, flags);
-  if (o.quiz.length < 5) flags.push(`[퀴즈] 원문으로 확인되는 문항이 ${o.quiz.length}개뿐입니다.`);
+  o.quiz = [];
   return o;
 }
 
 function checkQuiz_(quiz, inp, flags) {
-  const src = norm_([inp.source, inp.script, inp.answers].join(' '));
+  const src = srcAll_(inp);
   const ok = [];
   (quiz || []).forEach((q, n) => {
     q = q || {};
@@ -244,7 +295,7 @@ function checkQuiz_(quiz, inp, flags) {
 
 function checkSectionSlides_(slides, inp, sec, flags) {
   const tag = `[${sec.name_en}]`;
-  const src = norm_([inp.source, inp.script, inp.answers].join(' '));
+  const src = srcAll_(inp);
   const out = [];
   (slides || []).forEach(s => {
     if (!s || typeof s !== 'object') return;

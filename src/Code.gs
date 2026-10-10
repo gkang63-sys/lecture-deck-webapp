@@ -4,8 +4,9 @@
  * 흐름: 웹앱(단원·교재 내용 입력) → 제미나이 → 구글 슬라이드 → 퀴즈 폼 → 드라이브에 저장
  *
  * 화면(Index.html)이 아래 step 함수를 차례로 부른다.
- *  1 step1_start     폴더 만들기 + 입력 저장 + 덱 뼈대·퀴즈 (제미나이)
+ *  1 step1_start     폴더 만들기 + 입력 저장 + 덱 뼈대 (제미나이)
  *  2 step2_section   섹션별 슬라이드 내용 (제미나이, 섹션마다 한 번)
+ *    step2_quiz      확인 퀴즈 문항 (제미나이)
  *  3 step3_assemble  원문 대조 검증 + 한 장 한 호흡으로 나누기 + 전체 순서 확정
  *  4 step4_build     교수용 구글 슬라이드
  *  5 step5_student   학생용 사본 (정답 장·강의 노트 제외)
@@ -48,7 +49,8 @@ function saveApiKey(key) {
 
 // ───────────────────────── 1. 시작 + 뼈대 ─────────────────────────
 
-function step1_start(form) {
+/** 폴더와 입력 기록만 먼저 만든다 (금방 끝남). 뼈대가 실패해도 같은 폴더에서 다시 할 수 있게. */
+function step0_folder(form) {
   const inp = cleanInput_(form);
   const folder = makeFolder_(inp);
   const st = {
@@ -56,16 +58,32 @@ function step1_start(form) {
     input: inp, created: new Date().toISOString(), models: [], flags: [],
   };
   saveState_(st);
-  const res = callGemini_(outlinePrompt_(inp));
-  st.models.push('뼈대: ' + res.model);
-  st.outline = checkOutline_(parseJson_(res.text), inp, st.flags);
+  return { folderId: st.folderId, folderUrl: st.folderUrl, folderName: st.folderName };
+}
+
+function step1_start(folderId) {
+  const st = loadState_(folderId);
+  const res = callGemini_(outlinePrompt_(st.input));
+  st.flags = [];
+  st.models = ['뼈대: ' + res.model];
+  st.outline = checkOutline_(parseJson_(res.text), st.input, st.flags);
   st.sections = st.outline.sections.map(() => null);
   saveState_(st);
-  return {
-    folderId: st.folderId, folderUrl: st.folderUrl, folderName: st.folderName,
-    title: st.outline.title_en, sections: st.outline.sections.map(s => s.name_en),
-    quiz: st.outline.quiz.length, model: res.model,
-  };
+  return { title: st.outline.title_en, sections: st.outline.sections.map(s => s.name_en), model: res.model };
+}
+
+// ───────────────────────── 2′. 퀴즈 문항 ─────────────────────────
+
+function step2_quiz(folderId) {
+  const st = loadState_(folderId);
+  const res = callGemini_(quizPrompt_(st.input, st.outline));
+  const raw = parseJson_(res.text);
+  st.flags = st.flags.filter(f => f.indexOf('[퀴즈]') !== 0);
+  st.outline.quiz = checkQuiz_(Array.isArray(raw) ? raw : raw.quiz, st.input, st.flags);
+  if (st.outline.quiz.length < 5) st.flags.push(`[퀴즈] 원문으로 확인되는 문항이 ${st.outline.quiz.length}개뿐입니다.`);
+  st.models.push('퀴즈: ' + res.model);
+  saveState_(st);
+  return { count: st.outline.quiz.length, model: res.model };
 }
 
 // ───────────────────────── 2. 섹션 내용 ─────────────────────────
@@ -131,7 +149,8 @@ function step4_build(folderId) {
     notes.push({ insertText: { objectId: sl.slideProperties.notesPage.notesProperties.speakerNotesObjectId, text, insertionIndex: 0 } });
   });
   batch_(pres.presentationId, notes);
-  return { url: st.teacherUrl, total: st.deck.length };
+  const images = placePageImages_(pres.presentationId, st.deck);
+  return { url: st.teacherUrl, total: st.deck.length, images };
 }
 
 // ───────────────────────── 5. 학생용 사본 ─────────────────────────
@@ -228,6 +247,7 @@ function step7_finish(folderId) {
   h('교재 원문'); p(inp.source);
   h('듣기 대본'); p(inp.script);
   h('정답'); p(inp.answers);
+  h('교안·지도서 해설'); p(inp.plan);
   h('검증 결과 (원문 대조)');
   if (st.flags.length) st.flags.forEach(f => body.appendListItem(f)); else p('경고 없음 — 대본·정답·퀴즈 근거가 모두 원문에서 확인되었습니다.');
   h('사용한 모델'); st.models.forEach(m => body.appendListItem(m));
@@ -258,7 +278,8 @@ function cleanInput_(f) {
     course, week, session: parseInt(s('session'), 10) || 1, kind: s('kind') || '듣기 차시',
     unit: s('unit'), title: s('title'), book: s('book'), pages: s('pages'),
     sections: s('sections').split(/\n+/).map(x => x.trim()).filter(Boolean),
-    source: s('source'), script: s('script'), answers: s('answers'),
+    source: s('source'), script: s('script'), answers: s('answers'), plan: s('plan'),
+    pageImages: parseImages_(f.pageImages),
     goals: s('goals'), lastClass: s('lastClass'), assignment: s('assignment'),
     target: Math.min(60, Math.max(30, parseInt(s('target'), 10) || 48)),
   };

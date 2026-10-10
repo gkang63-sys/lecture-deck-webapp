@@ -57,6 +57,15 @@
   .links a.main{background:var(--soft);border-color:var(--line)}
   ul.flags{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink2)}
   #progress,#result{display:none}
+  .files{border:1px dashed var(--line);background:var(--soft);border-radius:14px;padding:16px 18px;margin-top:14px}
+  .files h3{font:700 14.5px/1.3 Inter,"Noto Sans KR",sans-serif;margin:0 0 2px}
+  .frow{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .frow:last-of-type{border-bottom:0}
+  .frow b{font-size:13px;font-weight:600}.frow small{display:block;color:var(--ink3);font-size:11.5px;font-weight:400}
+  .frow input[type=file]{padding:6px;font-size:12.5px;background:#fff}
+  ul.flist{list-style:none;margin:10px 0 0;padding:0;font-size:12.5px}
+  ul.flist li{padding:4px 0;color:var(--ink2)} ul.flist li.ok{color:var(--deep)} ul.flist li.err{color:var(--accent-deep)}
+  .warn{display:none;margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--accent-soft);border:1px solid #FFDCCE;color:var(--accent-deep);font-size:13.5px}
   @media (max-width:720px){.grid{grid-template-columns:1fr 1fr}.links{grid-template-columns:1fr}header h1{font-size:26px}}
 </style>
 </head>
@@ -83,10 +92,19 @@
   </div>
 
   <!-- 입력 -->
-  <form class="card" id="f" onsubmit="start(event)">
+  <form class="card" id="f" onsubmit="start(event)" novalidate>
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
       <div><h2>1 · 단원과 교재 내용</h2><p class="hint" style="margin:0">교재 본문·대본·정답은 여기 넣은 글만 씁니다. 없는 것은 지어내지 않고 [원문 필요] 자리표시자로 둡니다.</p></div>
       <button type="button" onclick="fillSample()">예시 채우기</button>
+    </div>
+    <div class="files">
+      <h3>교재 파일로 넣기 <span style="font-weight:400;color:var(--ink3);font-size:12.5px">— 선택. 고르고 [원문 읽기]를 누르면 아래 칸이 채워집니다</span></h3>
+      <p class="hint" style="margin:0 0 6px">PDF·사진은 제미나이가 지면을 보고 받아 적고, Word는 글을 그대로 꺼냅니다. 받아 적은 글은 꼭 훑어보고 틀린 곳을 고쳐 주세요. 지면 사진(jpg·png)은 교재 지면 장에 그대로 들어갑니다.</p>
+      <div class="frow"><div><b>교재 지면</b><small>PDF 또는 쪽별 사진</small></div><input type="file" id="fBook" multiple accept=".pdf,image/*"></div>
+      <div class="frow"><div><b>교사용 지도서</b><small>대본·정답·해설 상자</small></div><input type="file" id="fGuide" multiple accept=".pdf,image/*"></div>
+      <div class="frow"><div><b>교안</b><small>Word(.docx)·PDF</small></div><input type="file" id="fPlan" multiple accept=".doc,.docx,.pdf,.txt"></div>
+      <div class="row" style="margin-top:10px"><button type="button" id="readBtn" onclick="readFiles()">원문 읽기</button><span class="note" style="margin:0">파일마다 30초–2분. 올린 파일은 드라이브 강의자료/_올린 파일/ 에 보관됩니다.</span></div>
+      <ul class="flist" id="flist"></ul>
     </div>
     <div class="grid" style="margin-top:14px">
       <div class="w2"><label>과목</label>
@@ -94,27 +112,30 @@
           <option value="ELS1">영어듣기와 말하기 1</option>
           <option value="ERW1">영어읽기와 쓰기 1</option>
         </select></div>
-      <div><label>주차</label><input name="week" type="number" min="1" max="16" required placeholder="6"></div>
+      <div><label>주차 *</label><input name="week" type="number" min="1" max="16" required placeholder="예: 6"></div>
       <div><label>차시</label><select name="session"><option>1</option><option>2</option></select></div>
       <div class="w2"><label>차시 유형</label>
         <select name="kind"><option>듣기 차시</option><option>말하기 차시</option><option>읽기 차시</option><option>쓰기 차시</option></select></div>
-      <div class="w2"><label>단원 <small>예: Unit 5 Places</small></label><input name="unit"></div>
-      <div class="w2"><label>절 제목 <small>교재에 적힌 그대로 — 덱 제목이 됩니다</small></label><input name="title" required></div>
-      <div><label>교재 쪽수</label><input name="pages" placeholder="50–51"></div>
+      <div class="w2"><label>단원</label><input name="unit" placeholder="예: Unit 1 Nourishment"></div>
+      <div class="w2"><label>절 제목 * <small>교재에 적힌 그대로 — 덱 제목이 됩니다</small></label><input name="title" required placeholder="예: Emotional nourishment"></div>
+      <div><label>교재 쪽수</label><input name="pages" placeholder="예: 10–11"></div>
       <div><label>목표 장수 <small>45–60</small></label><input name="target" type="number" min="30" max="60" value="48"></div>
-      <div class="w4"><label>교재 이름</label><input name="book" placeholder="Skillful Listening & Speaking 1"></div>
+      <div class="w4"><label>교재 이름</label><input name="book" placeholder="예: Skillful Listening & Speaking 2"></div>
       <div class="w4"><label>교재 섹션 <small>줄마다 하나, 교재 표기 그대로 (비우면 원문에서 찾음)</small></label><textarea name="sections" rows="3"></textarea></div>
-      <div class="w4"><label>교재 원문 <small>본문·연습 문항을 붙여넣기 (필수)</small></label><textarea name="source" rows="10" required></textarea></div>
+      <div class="w4"><label>교재 원문 * <small>본문·연습 문항 (붙여넣기 또는 위의 [원문 읽기])</small></label><textarea name="source" rows="10" required></textarea></div>
       <div class="w2"><label>듣기 대본 <small>AUDIO SCRIPT — 있으면</small></label><textarea name="script" rows="8"></textarea></div>
       <div class="w2"><label>정답 <small>교사용 지도서 ANSWERS — 있으면</small></label><textarea name="answers" rows="8"></textarea></div>
+      <div class="w4"><label>교안·지도서 해설 <small>참고 — 설명 순서와 문장의 뼈대가 됩니다 (있으면)</small></label><textarea name="plan" rows="5"></textarea></div>
+      <input type="hidden" name="pageImages" id="pageImages" value="[]">
       <div class="w2"><label>학습 목표 <small>메모로 충분</small></label><textarea name="goals" rows="3"></textarea></div>
       <div class="w2"><label>지난 시간 <small>도입에서 잇는 말</small></label><textarea name="lastClass" rows="3"></textarea></div>
       <div class="w4"><label>과제 안내 <small>요건 숫자·기한·평가 기준 — 비우면 자리표시자</small></label><textarea name="assignment" rows="3"></textarea></div>
     </div>
     <div class="row" style="margin-top:18px">
       <button class="primary" id="go" type="submit">슬라이드·퀴즈 만들기</button>
-      <span class="note" style="margin:0">보통 4–8분. 제미나이가 붐비면 더 걸립니다. 창을 닫지 마세요.</span>
+      <span class="note" style="margin:0">보통 5–10분. 제미나이가 붐비면 더 걸립니다. 창을 닫지 마세요.</span>
     </div>
+    <div class="warn" id="warn"></div>
   </form>
 
   <!-- 진행 -->
@@ -151,9 +172,9 @@ call('getSettings').then(showKey).catch(function(){$('keyPill').textContent='확
 /* ── 진행 ── */
 var job={folderId:null,sections:[],at:0,t0:0};
 var STEPS=[];
-function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈',d:'제미나이'}];
+function plan(){STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대',d:'제미나이'}];
   job.sections.forEach(function(n,i){STEPS.push({id:'sec'+i,i:i,t:'섹션 '+(i+1)+' · '+n,d:'제미나이 — 해설·문항·정답'})});
-  STEPS.push({id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
+  STEPS.push({id:'quizgen',t:'확인 퀴즈 문항',d:'제미나이 — 원문에서 정답을 확인할 수 있는 문항만'},{id:'assemble',t:'원문 대조 검증 · 한 장 한 호흡으로 나누기',d:'대본·정답·퀴즈 근거를 원문과 대조'},
     {id:'build',t:'교수용 구글 슬라이드',d:'정답 장·강의 노트 포함'},
     {id:'student',t:'학생용 사본',d:'정답 장과 강의 노트를 뺀 사본'},
     {id:'quiz',t:'퀴즈 폼',d:'퀴즈 모드 · 정답·배점·해설'},
@@ -164,20 +185,29 @@ function secs(t){var s=Math.round((Date.now()-t)/1000);return s<60?s+'초':Math.
 
 function collect(){var o={};[].forEach.call($('f').elements,function(el){if(el.name)o[el.name]=el.value});return o}
 
+var NEEDED=[['week','주차'],['title','절 제목'],['source','교재 원문']];
 function start(e){e.preventDefault();
+  var f=$('f').elements, miss=NEEDED.filter(function(x){return !String(f[x[0]].value||'').trim()});
+  if(f.source.value.trim()&&f.source.value.trim().length<50) miss.push(['source','교재 원문(50자 이상)']);
+  if(miss.length){var w=$('warn');w.innerHTML='<b>아직 시작할 수 없습니다.</b> 비어 있는 칸: '+miss.map(function(x){return x[1]}).join(', ')+' — 처음이라면 위쪽 [예시 채우기]를 눌러 보세요.';w.style.display='block';f[miss[0][0]].focus();return}
+  $('warn').style.display='none';
   $('go').disabled=true;$('progress').style.display='block';$('result').style.display='none';$('errBox').style.display='none';
   job={folderId:null,sections:[],at:0,input:collect()};
-  STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈',d:'제미나이'}];
-  $('steps').innerHTML='<li id="st_start"><div class="dot">1</div><div><div class="t">폴더 만들기 · 입력 저장 · 덱 뼈대와 퀴즈</div><div class="d">제미나이</div></div><div class="time"></div></li>';
+  STEPS=[{id:'start',t:'폴더 만들기 · 입력 저장 · 덱 뼈대',d:'제미나이'}];
+  $('steps').innerHTML='<li id="st_start"><div class="dot">1</div><div><div class="t">폴더 만들기 · 입력 저장 · 덱 뼈대</div><div class="d">제미나이</div></div><div class="time"></div></li>';
   $('progress').scrollIntoView({behavior:'smooth'});
   loop();}
 
 function runStep(s){
-  if(s.id==='start') return call('step1_start',job.input).then(function(r){job.folderId=r.folderId;job.folderUrl=r.folderUrl;job.sections=r.sections;plan();
-    return '「'+r.title+'」 섹션 '+r.sections.length+'개 · 퀴즈 '+r.quiz+'문항 · '+r.model;});
+  if(s.id==='start') return (job.folderId?Promise.resolve():call('step0_folder',job.input).then(function(r){job.folderId=r.folderId;job.folderUrl=r.folderUrl;
+      mark('start','run','폴더: 강의자료/'+r.folderName+' — 제미나이가 덱 뼈대를 짜는 중…');}))
+    .then(function(){return call('step1_start',job.folderId)})
+    .then(function(r){job.sections=r.sections;plan();mark('start','run');
+    return '「'+r.title+'」 섹션 '+r.sections.length+'개 · '+r.model;});
+  if(s.id==='quizgen') return call('step2_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.model});
   if(s.i!=null) return call('step2_section',job.folderId,s.i).then(function(r){return r.count+'장 분량 · '+r.model});
   if(s.id==='assemble') return call('step3_assemble',job.folderId).then(function(r){job.flags=r.flags;return '전체 '+r.total+'장 · 문항 '+r.questions+'개(정답 장 '+r.answers+'장) · 경고 '+r.flags.length+'건'});
-  if(s.id==='build') return call('step4_build',job.folderId).then(function(r){return r.total+'장 완성'});
+  if(s.id==='build') return call('step4_build',job.folderId).then(function(r){return r.total+'장 완성'+(r.images?' · 지면 사진 '+r.images+'장':'')});
   if(s.id==='student') return call('step5_student',job.folderId).then(function(r){return r.total+'장 (정답 장 '+r.removed+'장 뺌)'});
   if(s.id==='quiz') return call('step6_quiz',job.folderId).then(function(r){return r.count+'문항 · '+r.points+'점 만점'});
   if(s.id==='finish') return call('step7_finish',job.folderId).then(function(r){job.result=r;return r.folderName});}
@@ -190,7 +220,7 @@ function loop(){
   runStep(s).then(function(msg){clearInterval(tick);mark(s.id,'ok',msg,secs(t));job.at++;loop();})
   .catch(function(err){clearInterval(tick);mark(s.id,'err',null,secs(t));
     $('errMsg').innerHTML='<b>멈췄습니다.</b> '+esc(err&&err.message||err);$('errBox').style.display='block';$('go').disabled=false;});}
-function resume(){$('errBox').style.display='none';$('go').disabled=true;if(!job.folderId){job.at=0}loop();}
+function resume(){$('errBox').style.display='none';$('go').disabled=true;loop();}
 
 function done(){$('go').disabled=false;var r=job.result;$('result').style.display='block';
   $('rHint').textContent='드라이브 강의자료/'+r.folderName+' 폴더에 모두 저장했습니다. 교수용 '+r.total+'장.';
@@ -201,6 +231,33 @@ function done(){$('go').disabled=false;var r=job.result;$('result').style.displa
   $('flagWrap').innerHTML=r.flags.length?'<details open><summary>검증 경고 '+r.flags.length+'건 — 슬라이드에서 확인할 곳</summary><ul class="flags">'+r.flags.map(function(f){return '<li>'+esc(f)+'</li>'}).join('')+'</ul></details>'
     :'<p class="note">검증 경고 없음 — 대본·정답·퀴즈 근거가 모두 원문에서 확인되었습니다.</p>';
   $('result').scrollIntoView({behavior:'smooth'});}
+
+/* ── 교재 파일 → 원문 ── */
+var IMAGES=[];
+function b64(file){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1]||'')};r.onerror=no;r.readAsDataURL(file)})}
+function upload(file,li,label){var id='u'+Date.now()+Math.random().toString(36).slice(2,7);
+  return b64(file).then(function(data){var CH=2000000,n=Math.ceil(data.length/CH)||1,k=0;
+    function next(){if(k>=n)return call('finishUpload',id,file.name,file.type,n);
+      li.textContent=label+' · '+file.name+' — 올리는 중 '+Math.round(k/n*100)+'%';
+      return call('uploadChunk',id,k,data.slice(k*CH,(k+1)*CH)).then(function(){k++;return next()})}
+    return next();});}
+function add(name,text){if(!text)return;var el=$('f').elements[name];el.value=(el.value.trim()?el.value.trim()+'\n\n':'')+text;}
+function readFiles(){
+  var jobs=[];[['fBook','book','교재'],['fGuide','guide','지도서'],['fPlan','plan','교안']].forEach(function(x){[].forEach.call($(x[0]).files,function(f){jobs.push({file:f,role:x[1],label:x[2]})})});
+  if(!jobs.length){alert('먼저 파일을 골라 주세요.');return}
+  $('readBtn').disabled=true;var ul=$('flist');ul.innerHTML='';
+  jobs.forEach(function(j){j.li=document.createElement('li');j.li.textContent=j.label+' · '+j.file.name+' — 대기';ul.appendChild(j.li)});
+  var k=0;
+  (function next(){var j=jobs[k++];if(!j){$('readBtn').disabled=false;$('pageImages').value=JSON.stringify(IMAGES);return}
+    var t=Date.now();
+    upload(j.file,j.li,j.label).then(function(info){j.li.textContent=j.label+' · '+j.file.name+' — 읽는 중'+(/word|doc|text/.test(info.mime)?'':' (제미나이가 지면을 받아 적는 중)')+'…';
+      return call('extractFile',info.id,j.role)})
+    .then(function(r){add('source',r.source);add('script',r.script);add('answers',r.answers);add('plan',r.plan);
+      if(r.image)IMAGES.push(r.image);
+      var n=['source','script','answers','plan'].reduce(function(a,k){return a+(r[k]?r[k].length:0)},0);
+      j.li.className='ok';j.li.textContent='✓ '+j.label+' · '+j.file.name+' — '+n.toLocaleString()+'자'+(r.page?' · '+r.page:'')+(r.image?' · 지면 사진으로 사용':'')+' · '+secs(t);})
+    .catch(function(e){j.li.className='err';j.li.textContent='✗ '+j.label+' · '+j.file.name+' — '+(e&&e.message||e);})
+    .then(next);})();}
 
 /* ── 예시 (직접 만든 글 — 실제 교재 아님) ── */
 function fillSample(){var f=$('f').elements;var S=<?!= JSON.stringify(sample_()) ?>;

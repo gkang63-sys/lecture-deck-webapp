@@ -47,7 +47,7 @@ function assembleDeck_(st) {
     D.push({ kind: 'divider', sec: sec.name_en, ref, num: i + 1, of: o.sections.length + 1, title_en: sec.name_en, title_ko: sec.name_ko,
       notes: `섹션 ${i + 1} 시작. "${sec.name_en}" — ${sec.name_ko}` });
     D.push({ kind: 'page', sec: sec.name_en, ref, title_en: `Textbook ${sec.page_ref || ''}`.trim(), title_ko: '교재 지면 — 먼저 함께 봅니다',
-      starts: sec.starts_with,
+      starts: sec.starts_with, images: imagesFor_(inp.pageImages, sec.page_ref),
       notes: '교재 지면을 먼저 띄우고 학생들이 같은 쪽을 펴게 한다. 해설은 다음 장부터. (지면 사진을 넣으려면 이 장의 점선 상자를 지우고 [삽입 → 이미지 → 드라이브])' });
     st.sections[i].forEach(s => {
       const base = { sec: sec.name_en, ref, title_en: s.title_en, title_ko: s.title_ko, notes: s.notes };
@@ -92,6 +92,38 @@ function assembleDeck_(st) {
       { label: 'NEXT · 다음', en: c.next_en || '', ko: c.next_ko || '' }],
     notes: (c.notes || '') + `\n과제 기한(${a.due || '미정'})을 한 번 더 말한다. 확인 퀴즈 링크를 안내한다.` });
   return D;
+}
+
+/** 섹션 쪽수(p.10, pp.10–11)에 맞는 지면 사진, 두 장까지 */
+function imagesFor_(images, ref) {
+  const want = pageNums_(ref);
+  return (images || []).filter(im => pageNums_(im.page).some(n => want.indexOf(n) > -1)).slice(0, 2);
+}
+
+/** 교재 지면 장에 사진을 넣는다 (Slides API는 공개 주소가 필요해서 이 부분만 SlidesApp으로) */
+function placePageImages_(presId, deck) {
+  const jobs = deck.map((s, i) => ({ s, i })).filter(x => x.s.kind === 'page' && x.s.images && x.s.images.length);
+  if (!jobs.length) return 0;
+  const pres = SlidesApp.openById(presId);
+  let n = 0;
+  jobs.forEach(({ s, i }) => {
+    const slide = pres.getSlideById(slideId_(i));
+    if (!slide) return;
+    const k = s.images.length, gap = 12, boxW = (640 - gap * (k - 1)) / k, boxH = BODY_BOTTOM - BODY_TOP - 4;
+    s.images.forEach((im, j) => {
+      try {
+        const img = slide.insertImage(DriveApp.getFileById(im.id).getBlob());
+        const r = Math.min(boxW / img.getWidth(), boxH / img.getHeight());
+        const w = img.getWidth() * r, h = img.getHeight() * r;
+        img.setWidth(w).setHeight(h).setLeft(40 + j * (boxW + gap) + (boxW - w) / 2).setTop(BODY_TOP + 2 + (boxH - h) / 2);
+        img.getBorder().getLineFill().setSolidFill('#E0E4EA');
+        img.getBorder().setWeight(0.75);
+        n++;
+      } catch (e) { /* 사진 하나가 안 들어가도 덱은 계속 */ }
+    });
+  });
+  pres.saveAndClose();
+  return n;
 }
 
 /** 영·한 쌍이 한 장에 넘치면 나눈다: 쌍 4개(강조 문장이 있으면 3개)와 높이 둘 다 본다 */
@@ -342,6 +374,7 @@ function rDivider_(P, c, s, i) {
 
 function rPage_(P, c, s, i) {
   chrome_(P, c, s, i);
+  if (s.images && s.images.length) return; // 지면 사진은 placePageImages_가 넣는다
   P.text(40, BODY_TOP + 2, 640, BODY_BOTTOM - BODY_TOP - 4, [
     { t: `${s.ref || '교재'} 지면 자리`, st: { f: KO, s: 14, b: true, c: INK2 }, pa: { al: 'CENTER' } },
     { t: '이 점선 상자를 지우고 [삽입 → 이미지 → 드라이브]로 교재 사진을 넣으세요.', st: { f: KO, s: 10.5, c: INK3 }, pa: { al: 'CENTER', sa: 8 } },
