@@ -32,6 +32,7 @@ const COURSES = {
 
 function doGet(e) {
   if (e && e.parameter && e.parameter.deck) return deckPage_(e.parameter.deck); // HTML 덱 미리보기
+  if (e && e.parameter && e.parameter.redo) return redoPage_(e.parameter.redo);  // 링크 한 번으로 마무리
   return HtmlService.createTemplateFromFile('Index').evaluate()
     .setTitle('강의 슬라이드 만들기')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -327,6 +328,37 @@ function step7_finish(folderId) {
     htmlView: st.htmlView, htmlStudentView: st.htmlStudentView, htmlUrl: st.htmlUrl, htmlStudentUrl: st.htmlStudentUrl,
     total: st.deck.length, flags: st.flags,
   };
+}
+
+// ───────────────────────── 링크 한 번으로 마무리 (?redo=폴더ID) ─────────────────────────
+// 빠진 음성 조각만 만들어 잇고 → 슬라이드·학생용·HTML 덱·기록을 다시 만든다. 글 생성·퀴즈 폼은 그대로 둔다.
+
+function redoPage_(folderId) {
+  const log = [];
+  const t0 = Date.now();
+  try {
+    const st = loadState_(folderId);
+    let made = 0, fail = 0;
+    (st.audioJobs || []).forEach((j, k) => {
+      if (Date.now() - t0 > 150 * 1000 || loadPart_(folderId, `오디오_${j.key}.json`)) return;
+      try { step3_audio(folderId, k); made++; } catch (e) { fail++; log.push('음성 실패: ' + j.title + ' — ' + e.message); }
+    });
+    const m = step3_audioMerge(folderId);
+    log.push(`음성 ${made}개 새로 만듦${fail ? ', ' + fail + '개 실패' : ''} · 이어 붙인 전체 음성 ${m.merged}개`);
+    const b = step4_build(folderId); log.push(`교수용 슬라이드 ${b.total}장`);
+    const s = step5_student(folderId); log.push(`학생용 ${s.total}장`);
+    const st2 = loadState_(folderId);
+    if (st2.formShort) [st2.teacherId, st2.studentId].forEach(id => batch_(id, [
+      { replaceAllText: { containsText: { text: '{{QUIZ}}', matchCase: true }, replaceText: st2.formShort } }]));
+    const h = step6b_html(folderId); log.push(`HTML 덱 ${h.slides}장 · ${h.mb}MB · 음원 ${h.audio}개`);
+    const r = step7_finish(folderId);
+    const a = (href, t) => `<p><a href="${href}" target="_blank" style="font-size:18px">${t} ↗</a></p>`;
+    return HtmlService.createHtmlOutput(`<div style="font-family:sans-serif;max-width:640px;margin:40px auto;line-height:1.7">
+      <h2>마무리 완료 — ${escH_(r.folderName)}</h2><ul>${log.map(x => '<li>' + escH_(x) + '</li>').join('')}</ul>
+      ${a(r.htmlView, 'HTML 덱 열기 (교수용)')}${a(r.htmlStudentView, 'HTML 덱 열기 (학생용)')}${a(r.teacherUrl, '구글 슬라이드 (교수용)')}${a(r.studentUrl, '구글 슬라이드 (학생용)')}${a(r.folderUrl, '드라이브 폴더')}</div>`).setTitle('마무리 완료');
+  } catch (e) {
+    return HtmlService.createHtmlOutput(`<div style="font-family:sans-serif;max-width:640px;margin:40px auto"><h2>멈췄습니다</h2><p>${escH_(e.message)}</p><ul>${log.map(x => '<li>' + escH_(x) + '</li>').join('')}</ul><p>이 페이지를 새로고침하면 이어서 다시 합니다.</p></div>`);
+  }
 }
 
 // ───────────────────────── 이전 결과 다시 열기 ─────────────────────────
