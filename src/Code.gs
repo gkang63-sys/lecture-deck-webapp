@@ -339,7 +339,7 @@ function redoPage_(folderId) {
   <h2 style="margin-bottom:4px">마무리 중 — 창을 닫지 마세요</h2><p id="sub" style="color:#666;margin-top:0">빠진 음성만 만들어 잇고, 슬라이드·HTML 덱을 다시 만듭니다.</p>
   <ol id="log"></ol><div id="links"></div></div>
   <script>
-  var fid=<?= JSON.stringify(fid) ?>;
+  var fid=<?!= JSON.stringify(fid) ?>;
   function call(fn){var a=[].slice.call(arguments,1);return new Promise(function(ok,no){var r=google.script.run.withSuccessHandler(ok).withFailureHandler(no);r[fn].apply(r,a)})}
   function li(t){var e=document.createElement('li');e.textContent=t;document.getElementById('log').appendChild(e);return e}
   function step(label,p){var e=li(label+' …');return p.then(function(r){e.textContent='✓ '+label+(r&&r.msg?' — '+r.msg:'');return r},function(err){e.textContent='✗ '+label+' — '+(err&&err.message||err);e.style.color='#D9490F';throw err})}
