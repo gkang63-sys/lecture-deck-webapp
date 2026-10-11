@@ -334,35 +334,52 @@ function step7_finish(folderId) {
 // 빠진 음성 조각만 만들어 잇고 → 슬라이드·학생용·HTML 덱·기록을 다시 만든다. 글 생성·퀴즈 폼은 그대로 둔다.
 
 function redoPage_(folderId) {
-  const log = [];
-  const t0 = Date.now();
-  try {
-    const st = loadState_(folderId);
-    st.audioJobs = audioJobsFor_(st); // 음성 할 일을 지금 코드로 다시 짠다 (제목 줄 빼기 등)
-    saveState_(st);
-    let made = 0, fail = 0;
-    const tryAll = () => (st.audioJobs || []).forEach((j, k) => {
-      if (Date.now() - t0 > 150 * 1000 || loadPart_(folderId, `오디오_${j.key}.json`)) return;
-      try { step3_audio(folderId, k); made++; } catch (e) { fail++; log.push('음성 실패: ' + j.title + ' — ' + e.message); }
-    });
-    tryAll();
-    if (fail) { Utilities.sleep(20000); fail = 0; tryAll(); } // 분당 한도에 걸린 조각은 20초 뒤 한 번 더
-    const m = step3_audioMerge(folderId);
-    log.push(`음성 ${made}개 새로 만듦${fail ? ', ' + fail + '개 실패' : ''} · 이어 붙인 전체 음성 ${m.merged}개`);
-    const b = step4_build(folderId); log.push(`교수용 슬라이드 ${b.total}장`);
-    const s = step5_student(folderId); log.push(`학생용 ${s.total}장`);
-    const st2 = loadState_(folderId);
-    if (st2.formShort) [st2.teacherId, st2.studentId].forEach(id => batch_(id, [
-      { replaceAllText: { containsText: { text: '{{QUIZ}}', matchCase: true }, replaceText: st2.formShort } }]));
-    const h = step6b_html(folderId); log.push(`HTML 덱 ${h.slides}장 · ${h.mb}MB · 음원 ${h.audio}개`);
-    const r = step7_finish(folderId);
-    const a = (href, t) => `<p><a href="${href}" target="_blank" style="font-size:18px">${t} ↗</a></p>`;
-    return HtmlService.createHtmlOutput(`<div style="font-family:sans-serif;max-width:640px;margin:40px auto;line-height:1.7">
-      <h2>마무리 완료 — ${escH_(r.folderName)}</h2><ul>${log.map(x => '<li>' + escH_(x) + '</li>').join('')}</ul>
-      ${a(r.htmlView, 'HTML 덱 열기 (교수용)')}${a(r.htmlStudentView, 'HTML 덱 열기 (학생용)')}${a(r.teacherUrl, '구글 슬라이드 (교수용)')}${a(r.studentUrl, '구글 슬라이드 (학생용)')}${a(r.folderUrl, '드라이브 폴더')}</div>`).setTitle('마무리 완료');
-  } catch (e) {
-    return HtmlService.createHtmlOutput(`<div style="font-family:sans-serif;max-width:640px;margin:40px auto"><h2>멈췄습니다</h2><p>${escH_(e.message)}</p><ul>${log.map(x => '<li>' + escH_(x) + '</li>').join('')}</ul><p>이 페이지를 새로고침하면 이어서 다시 합니다.</p></div>`);
-  }
+  // 화면이 단계를 하나씩 부른다 (한 번 실행 6분 제한을 피함) — 링크를 한 번 열면 끝까지 저절로 간다
+  const t = HtmlService.createTemplate(`<div style="font-family:'Noto Sans KR',sans-serif;max-width:680px;margin:40px auto;line-height:1.7;padding:0 16px">
+  <h2 style="margin-bottom:4px">마무리 중 — 창을 닫지 마세요</h2><p id="sub" style="color:#666;margin-top:0">빠진 음성만 만들어 잇고, 슬라이드·HTML 덱을 다시 만듭니다.</p>
+  <ol id="log"></ol><div id="links"></div></div>
+  <script>
+  var fid=<?= JSON.stringify(fid) ?>;
+  function call(fn){var a=[].slice.call(arguments,1);return new Promise(function(ok,no){var r=google.script.run.withSuccessHandler(ok).withFailureHandler(no);r[fn].apply(r,a)})}
+  function li(t){var e=document.createElement('li');e.textContent=t;document.getElementById('log').appendChild(e);return e}
+  function step(label,p){var e=li(label+' …');return p.then(function(r){e.textContent='✓ '+label+(r&&r.msg?' — '+r.msg:'');return r},function(err){e.textContent='✗ '+label+' — '+(err&&err.message||err);e.style.color='#D9490F';throw err})}
+  var n=0,ok=0,fail=[];
+  function audio(i){return call('step3_audio',fid,i).then(function(){ok++},function(e){fail.push(i)})}
+  step('음성 할 일 확인',call('redoPrep',fid).then(function(r){n=r.count;return {msg:r.missing+'개를 새로 만듭니다 (전체 '+n+'개)'}}))
+  .then(function(){var e=li('음성 만들기 …'),k=0;
+    function w(){if(k>=n)return Promise.resolve();var i=k++;return audio(i).then(function(){e.textContent='음성 만들기 '+(ok)+' / '+n+' …'}).then(w)}
+    return Promise.all([w(),w()]).then(function(){if(!fail.length)return;var f=fail.slice();fail=[];e.textContent='실패한 '+f.length+'개를 20초 뒤 다시…';
+      return new Promise(function(r){setTimeout(r,20000)}).then(function(){return f.reduce(function(p,i){return p.then(function(){return audio(i)})},Promise.resolve())})})
+    .then(function(){e.textContent=(fail.length?'△ 음성 — '+fail.length+'개는 만들지 못했습니다 (무료 사용량). 나중에 이 링크를 다시 열면 이어서 만듭니다.':'✓ 음성 '+n+'개 준비')})})
+  .then(function(){return step('긴 음성 이어 붙이기',call('step3_audioMerge',fid).then(function(r){return {msg:r.merged?'강의 전체 음성 완성':'이미 완성되었거나 조각이 덜 됨'}}))})
+  .then(function(){return step('교수용 구글 슬라이드',call('step4_build',fid).then(function(r){return {msg:r.total+'장'}}))})
+  .then(function(){return step('학생용 사본',call('step5_student',fid).then(function(r){return {msg:r.total+'장'}}))})
+  .then(function(){return step('퀴즈 링크 넣기',call('redoQuizLink',fid))})
+  .then(function(){return step('HTML 덱',call('step6b_html',fid).then(function(r){return {msg:r.slides+'장 · '+r.mb+'MB · 음원 '+r.audio+'개'}}))})
+  .then(function(){return call('step7_finish',fid)})
+  .then(function(r){document.querySelector('h2').textContent='마무리 완료 — '+r.folderName;document.getElementById('sub').textContent='아래를 눌러 확인하세요.';
+    var L=[[r.htmlView,'HTML 덱 열기 (교수용)'],[r.htmlStudentView,'HTML 덱 열기 (학생용)'],[r.teacherUrl,'구글 슬라이드 (교수용)'],[r.studentUrl,'구글 슬라이드 (학생용)'],[r.folderUrl,'드라이브 폴더']];
+    document.getElementById('links').innerHTML=L.map(function(x){return '<p><a target="_blank" style="font-size:18px" href="'+x[0]+'">'+x[1]+' ↗</a></p>'}).join('')})
+  .catch(function(){document.querySelector('h2').textContent='멈췄습니다 — 이 링크를 다시 열면 이어서 합니다'});
+  </script>`);
+  t.fid = folderId;
+  return t.evaluate().setTitle('마무리').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** 마무리 준비: 음성 할 일을 지금 코드로 다시 짜고, 아직 없는 개수를 알려 준다 */
+function redoPrep(folderId) {
+  const st = loadState_(folderId);
+  st.audioJobs = audioJobsFor_(st);
+  saveState_(st);
+  return { count: st.audioJobs.length, missing: st.audioJobs.filter(j => !loadPart_(folderId, `오디오_${j.key}.json`)).length };
+}
+
+/** 다시 만든 슬라이드에 기존 퀴즈 링크를 넣는다 (퀴즈 폼은 새로 만들지 않음) */
+function redoQuizLink(folderId) {
+  const st = loadState_(folderId);
+  if (st.formShort) [st.teacherId, st.studentId].forEach(id => batch_(id, [
+    { replaceAllText: { containsText: { text: '{{QUIZ}}', matchCase: true }, replaceText: st.formShort } }]));
+  return { msg: st.formShort || '퀴즈 없음' };
 }
 
 // ───────────────────────── 이전 결과 다시 열기 ─────────────────────────
