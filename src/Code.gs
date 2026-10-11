@@ -191,6 +191,7 @@ function step4_build(folderId) {
 
   const ctx = ctx_(st);
   ctx.audio = audioMap_(folderId, st.audioJobs);
+  ctx.listenSecs = listenSecs_(st.deck);
   const reqs = [];
   st.deck.forEach((s, i) => renderSlide_(ctx, s, i, reqs));
   reqs.push({ deleteObject: { objectId: pres.slides[0].objectId } }); // 새 파일에 딸려 오는 빈 장

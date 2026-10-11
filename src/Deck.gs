@@ -427,8 +427,23 @@ function audioButton_(P, c, a, x, y, w, h, label) {
     { type: 'ROUND_RECTANGLE', fill: c.brand, middle: true, link: a.url });
 }
 
+/** 듣기 장이 있는 섹션 — 이 섹션의 지면·교재 문항 장에도 전체 음원을 단다 (클로드본처럼 문제 풀며 다시 듣기) */
+function listenSecs_(deck) {
+  const o = {};
+  deck.forEach(s => { if (s.kind === 'listen') o[s.sec] = true; });
+  return o;
+}
+
+/** 제목 줄 오른쪽 작은 ▶ 전체 듣기 */
+function fullAudioChip_(P, c, s) {
+  const a = c.audio && c.audio.full;
+  if (!a || !(c.listenSecs || {})[s.sec]) return;
+  audioButton_(P, c, a, 572, 40, 108, 24, '▶  전체 듣기');
+}
+
 function rPage_(P, c, s, i) {
   chrome_(P, c, s, i);
+  fullAudioChip_(P, c, s);
   if (s.images && s.images.length) return; // 지면 사진은 placePageImages_가 넣는다
   P.text(40, BODY_TOP + 2, 640, BODY_BOTTOM - BODY_TOP - 4, [
     { t: `${s.ref || '교재'} 지면 자리`, st: { f: KO, s: 14, b: true, c: INK2 }, pa: { al: 'CENTER' } },
@@ -452,6 +467,7 @@ function rScript_(P, c, s, i) {
 
 function rQuestion_(P, c, s, i) {
   chrome_(P, c, s, i);
+  if (s.from_textbook) fullAudioChip_(P, c, s);
   const label = `${s.label || 'QUESTION'}  ·  ${s.from_textbook ? '교재 문항' : '생각해 보기'}`;
   P.text(40, BODY_TOP, 640, 18, [{ t: label.toUpperCase(), st: { f: MO, s: 8.5, c: c.brand } }]);
   const qh = estH_(s.q_en, 20, 640, 1.2) + 6 + estH_(s.q_ko, 12, 640, 1.4) + 6;

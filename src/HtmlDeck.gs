@@ -54,7 +54,8 @@ function emH_(s) { return escH_(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
 function htmlSlides_(st, media) {
   const inp = st.input, c = ctx_(st);
   const audio = audioMap_(st.folderId, st.audioJobs || []);
-  const D = st.deck, out = [];
+  const D = st.deck, out = [], listen = listenSecs_(D);
+  const full = s => listen[s.sec] ? aud('full', inp.title) : ''; // 듣기 섹션의 지면·교재 문항 장에도 전체 음원
   const foot = notes => `<div class="foot"><span>${escH_(c.foot)}</span><span class="n"></span></div><div class="notes-src">${escH_(notes || '')}</div>`;
   const eyebrow = s => `<div class="eyebrow"><span>Week ${c.week} ▸ ${escH_(s.sec)}</span><span class="page-ref">${escH_(s.ref || '')}</span></div>`;
   const head = (s, ko) => eyebrow(s) + `<h1 class="h-title${ko ? ' ko' : ''}">${emH_(s.title_en)}</h1>` +
@@ -85,11 +86,12 @@ function htmlSlides_(st, media) {
         `<div class="body"><div class="cols">${col('Goals · 학습 목표', s.goals)}${col('Flow · 수업 흐름', s.flow)}</div></div>${foot(s.notes)}</section>`;
     } else if (s.kind === 'page') {
       const imgs = (s.images || []).map(im => imageData_(im.id, media)).filter(Boolean);
+      const bar = full(s);
       const frame = imgs.length
-        ? `<div class="page-frame${imgs.length > 1 ? ' split' : ''}">${imgs.map(u => `<img src="${u}" alt="">`).join('')}</div>`
+        ? `<div class="page-frame${imgs.length > 1 ? ' split' : ''}"${bar ? ' style="height:396px"' : ''}>${imgs.map(u => `<img src="${u}" alt="">`).join('')}</div>`
         : `<div class="placeholder"><div class="big">${escH_(s.ref || '교재')}</div><div class="small">교재 지면 사진을 [교재 지면]에 jpg로 올리면 여기에 들어갑니다</div></div>`;
       h = `<section class="slide">${eyebrow(s)}<h1 class="h-title ko">교재 보기 · ${escH_(s.ref || '')} ${escH_(s.sec)}</h1><div class="rule"></div>` +
-        `<div class="body tall">${frame}${s.starts ? `<div class="page-cap">${escH_(s.starts)} …</div>` : ''}</div>${foot(s.notes)}</section>`;
+        `<div class="body tall">${bar}${frame}${s.starts ? `<div class="page-cap">${escH_(s.starts)} …</div>` : ''}</div>${foot(s.notes)}</section>`;
     } else if (s.kind === 'listen') {
       h = `<section class="slide">${head(s)}<div class="body mid">` +
         pair({ en: 'Listen to the whole recording first. Don’t stop — just get the **big picture**.', ko: '먼저 녹음을 끝까지 들어 보세요. 멈추지 말고 **큰 그림**만 잡습니다.' }, 'key') +
@@ -102,7 +104,7 @@ function htmlSlides_(st, media) {
     } else if (s.kind === 'question') {
       const a = D[i + 1] && D[i + 1].kind === 'answer' ? D[i + 1] : null;
       if (a) i++; // 정답 장은 같은 장에 → 로 열리게
-      h = `<section class="slide">${head(s)}<div class="body tall">${questionHtml_(s, a)}</div>${foot([s.notes, a && a.notes].filter(Boolean).join(' / '))}</section>`;
+      h = `<section class="slide">${head(s)}<div class="body tall">${s.from_textbook ? full(s) : ''}${questionHtml_(s, a)}</div>${foot([s.notes, a && a.notes].filter(Boolean).join(' / '))}</section>`;
     } else if (s.kind === 'answer') {
       h = `<section class="slide">${head(s)}<div class="body tall">${answerBox_(s, false)}</div>${foot(s.notes)}</section>`;
     } else if (s.kind === 'chips') {
