@@ -12,7 +12,7 @@ const NEED = '[원문 필요]';
 
 /** blobs: PDF·사진을 함께 보낼 때 (제미나이가 지면을 직접 읽음) */
 function callGemini_(prompt, blobs, startedAt) {
-  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const key = apiKey_();
   if (!key) throw new Error('Gemini API 키가 없습니다. 화면 위쪽 [API 키]에서 먼저 저장해 주세요.');
   const parts = (blobs || []).map(b => ({ inline_data: { mime_type: b.getContentType(), data: Utilities.base64Encode(b.getBytes()) } }));
   parts.push({ text: prompt });

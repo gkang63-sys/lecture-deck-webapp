@@ -38,15 +38,22 @@ function doGet(e) {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+// 웹앱은 '여는 사람 계정으로 실행'한다 — 결과물은 각자 자기 드라이브에. 키는 각자 저장한 것을 먼저, 없으면 공용 키.
+function apiKey_() {
+  return PropertiesService.getUserProperties().getProperty('GEMINI_API_KEY') ||
+    PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+}
+
 function getSettings() {
-  return { hasKey: !!PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') };
+  const own = !!PropertiesService.getUserProperties().getProperty('GEMINI_API_KEY');
+  return { hasKey: !!apiKey_(), own };
 }
 
 /** 화면의 [API 키 저장] — 키는 이 스크립트의 Script Properties에만 저장된다 */
 function saveApiKey(key) {
   key = String(key || '').trim();
   if (!/^[\w-]{20,}$/.test(key)) throw new Error('API 키 모양이 아닙니다. AI Studio에서 복사한 키를 그대로 붙여넣어 주세요.');
-  PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', key);
+  PropertiesService.getUserProperties().setProperty('GEMINI_API_KEY', key); // 이 계정에서만 쓰는 키
   return getSettings();
 }
 

@@ -6,6 +6,9 @@
 웹앱(단원·교재 내용 입력) → 제미나이 → 구글 슬라이드 → 퀴즈 폼 → 드라이브에 저장
 ```
 
+- 소개 페이지: https://lecture-deck-webapp.vercel.app (`site/index.html`, Vercel)
+- 웹앱: https://script.google.com/macros/s/AKfycbxFvX9PMCdyp9MB19M9EQ4YfD-hanMMJUi_cL_TBDE3t9k7_9LDo001Xl3vV60Jx2FAIw/exec (구글 계정이 있으면 누구나, 결과물은 여는 사람의 드라이브에)
+
 ## 무엇을 하나
 
 - 단원 정보와 교재 원문을 넣습니다. 붙여넣기 외에 PDF·사진·Word를 올리면 제미나이가 지면을 받아 적습니다.

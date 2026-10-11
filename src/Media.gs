@@ -133,7 +133,7 @@ function step3_audio(folderId, k) {
 }
 
 function callTTS_(prompt, speakers) {
-  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const key = apiKey_();
   const speechConfig = speakers && speakers.length === 2
     ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map((s, i) => ({ speaker: s, voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[i] } } })) } }
     : { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[0] } } };
