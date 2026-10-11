@@ -198,6 +198,7 @@ function mediaFolder_(folderId) {
 function audioMap_(folderId, jobs) {
   const map = {};
   (jobs || []).forEach(j => { const p = loadPart_(folderId, `오디오_${j.key}.json`); if (p) map[j.key] = p; });
+  if (!map.full) { const own = loadPart_(folderId, '오디오_full.json'); if (own) map.full = own; } // 선생님 음원은 할 일 목록에 없다
   return map;
 }
 
