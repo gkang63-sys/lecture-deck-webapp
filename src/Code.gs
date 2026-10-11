@@ -338,6 +338,8 @@ function redoPage_(folderId) {
   const t0 = Date.now();
   try {
     const st = loadState_(folderId);
+    st.audioJobs = audioJobsFor_(st); // 음성 할 일을 지금 코드로 다시 짠다 (제목 줄 빼기 등)
+    saveState_(st);
     let made = 0, fail = 0;
     const tryAll = () => (st.audioJobs || []).forEach((j, k) => {
       if (Date.now() - t0 > 150 * 1000 || loadPart_(folderId, `오디오_${j.key}.json`)) return;

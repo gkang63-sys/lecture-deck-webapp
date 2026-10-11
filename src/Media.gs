@@ -49,7 +49,8 @@ function speakers_(lines) {
  * 화자가 정확히 둘이면 두 목소리로, 아니면 한 목소리로 (이름은 읽지 않게 지운다).
  */
 function audioJob_(key, title, lines) {
-  lines = lines.map(l => String(l).trim()).filter(Boolean);
+  // "AUDIO SCRIPT 1.04", "Extract 1" 같은 제목 줄은 읽지 않는다
+  lines = lines.map(l => String(l).trim()).filter(l => l && !/^(audio\s*script\b|track\b|extract\s*\d+\s*$|\d+\.\d+\s*$)/i.test(l));
   const names = speakers_(lines);
   const multi = names.length === 2;
   const body = multi ? lines.join('\n') : lines.map(l => l.replace(/^\s*[A-Z][\w .'-]{0,20}:\s/, '')).join('\n');
@@ -68,7 +69,8 @@ function splitAudioJob_(key, title, lines) {
   let cur = '';
   sents.forEach(t => { if ((cur + t).length > 700 && cur.trim()) { chunks.push(cur.trim()); cur = ''; } cur += t; });
   if (cur.trim()) chunks.push(cur.trim());
-  const jobs = chunks.map((t, i) => Object.assign({}, job, { key: `${key}__${i + 1}`, title: `${title}_${i + 1}`, text: t }));
+  // 조각 이름은 글 내용으로 — 나누는 자리가 바뀌면 그 조각만 새로 만든다
+  const jobs = chunks.map((t, i) => Object.assign({}, job, { key: `${key}__${hash_(t)}`, title: `${title}_${i + 1}`, text: t }));
   return { jobs, merge: { key, title, parts: jobs.map(j => j.key) } };
 }
 
