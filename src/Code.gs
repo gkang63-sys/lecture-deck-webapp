@@ -339,10 +339,12 @@ function redoPage_(folderId) {
   try {
     const st = loadState_(folderId);
     let made = 0, fail = 0;
-    (st.audioJobs || []).forEach((j, k) => {
+    const tryAll = () => (st.audioJobs || []).forEach((j, k) => {
       if (Date.now() - t0 > 150 * 1000 || loadPart_(folderId, `오디오_${j.key}.json`)) return;
       try { step3_audio(folderId, k); made++; } catch (e) { fail++; log.push('음성 실패: ' + j.title + ' — ' + e.message); }
     });
+    tryAll();
+    if (fail) { Utilities.sleep(20000); fail = 0; tryAll(); } // 분당 한도에 걸린 조각은 20초 뒤 한 번 더
     const m = step3_audioMerge(folderId);
     log.push(`음성 ${made}개 새로 만듦${fail ? ', ' + fail + '개 실패' : ''} · 이어 붙인 전체 음성 ${m.merged}개`);
     const b = step4_build(folderId); log.push(`교수용 슬라이드 ${b.total}장`);

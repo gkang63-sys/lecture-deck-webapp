@@ -284,12 +284,16 @@ function runGroup(){
     job.at+=group.length;loop();});}
 /* 음성은 두 개씩 나눠 만든다 (무료 사용량 보호). 실패해도 덱은 버튼 없이 계속 만든다. */
 function audioAll(){var n=job.audio||0;if(!n)return Promise.resolve('대본이 없어 건너뜀');
-  var k=0,ok=0,reused=0,fails=[];
-  function worker(){if(k>=n)return Promise.resolve();var i=k++;
-    mark('audio','run',(ok+reused)+' / '+n+' 만드는 중…');
-    return call('step3_audio',job.folderId,i).then(function(r){if(r.reused)reused++;else if(!r.skipped)ok++;})
-      .catch(function(e){fails.push(e&&e.message||e)}).then(worker);}
-  return Promise.all([worker(),worker()]).then(function(){return call('step3_audioMerge',job.folderId).catch(function(e){fails.push(e&&e.message||e)})}).then(function(){
+  var k=0,ok=0,reused=0,fails=[],failIdx=[];
+  function one(i){mark('audio','run',(ok+reused)+' / '+n+' 만드는 중…');
+    return call('step3_audio',job.folderId,i).then(function(r){if(r.reused)reused++;else if(!r.skipped)ok++;return true})
+      .catch(function(e){fails.push(e&&e.message||e);return false});}
+  function worker(){if(k>=n)return Promise.resolve();var i=k++;return one(i).then(function(good){if(!good)failIdx.push(i)}).then(worker);}
+  /* 실패한 조각은 20초 쉬고 한 번 더 (무료 사용량의 분당 한도에 걸리는 일이 많아서) — 선생님이 다시 누를 필요 없게 */
+  function retry(){if(!failIdx.length)return Promise.resolve();var list=failIdx.slice();failIdx=[];fails=[];
+    mark('audio','run','실패한 '+list.length+'개를 20초 뒤 다시 만듭니다…');
+    return new Promise(function(r){setTimeout(r,20000)}).then(function(){return list.reduce(function(p,i){return p.then(function(){return one(i)})},Promise.resolve())});}
+  return Promise.all([worker(),worker()]).then(retry).then(function(){return call('step3_audioMerge',job.folderId).catch(function(e){fails.push(e&&e.message||e)})}).then(function(){
     return (ok+reused)+' / '+n+'개 준비'+(reused?' (이전 것 '+reused+'개 재사용)':'')+(fails.length?' · 실패 '+fails.length+'개 — '+String(fails[0]).slice(0,80):'');});}
 function loop(){
   var s=STEPS[job.at];
