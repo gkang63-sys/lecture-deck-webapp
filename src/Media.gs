@@ -116,10 +116,14 @@ function step3_audio(folderId, k) {
   if (!job) return { skipped: true };
   const done = loadPart_(folderId, `오디오_${job.key}.json`);
   if (done) return Object.assign({ reused: true }, done); // 같은 글은 이미 만들었음
-  const prompt = (job.speakers.length === 2
-    ? `Read this English listening script for university students as a natural conversation between ${job.speakers[0]} and ${job.speakers[1]}, at a clear, moderate pace:\n`
-    : 'Read this English listening script for university students in a clear, natural voice at a moderate pace:\n') + job.text;
-  const r = callTTS_(prompt, job.speakers);
+  // 대본 속 질문("Has anyone heard the term before?")에 답하려다 실패하는 일이 있어, 그대로 읽으라고 분명히 한다
+  const head = job.speakers.length === 2
+    ? `TTS the following conversation between ${job.speakers[0]} and ${job.speakers[1]} exactly as written, word for word, at a clear, moderate pace. It is a recording script: do not answer or add anything.\n`
+    : 'TTS the following recording script exactly as written, word for word, in a clear, natural voice at a moderate pace. Do not answer any questions in it and do not add anything.\n';
+  let r;
+  try { r = callTTS_(head + job.text, job.speakers); } catch (e) {
+    r = callTTS_('Say exactly: "' + job.text.replace(/"/g, "'") + '"', job.speakers); // 한 번 더, 더 짧은 지시로
+  }
   const name = `${job.title}.wav`.replace(/[\\/:*?"<>|]/g, '');
   const file = mediaFolder_(folderId).createFile(pcmToWav_(r.data, r.rate, name));
   const info = { key: job.key, id: file.getId(), url: `https://drive.google.com/file/d/${file.getId()}/view`,
