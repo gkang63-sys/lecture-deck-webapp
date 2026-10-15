@@ -7,7 +7,7 @@
 ```
 
 - 소개 페이지: https://lecture-deck-webapp.vercel.app (`site/index.html`, Vercel)
-- 웹앱: https://script.google.com/macros/s/AKfycbxFvX9PMCdyp9MB19M9EQ4YfD-hanMMJUi_cL_TBDE3t9k7_9LDo001Xl3vV60Jx2FAIw/exec (구글 계정이 있으면 누구나, 결과물은 여는 사람의 드라이브에)
+- 웹앱: 각자 배포한 Apps Script 웹앱 주소(`…/exec`, 아래 「설치」 4번 `clasp create-deployment`로 받음)를 씁니다. 구글 계정이 있으면 누구나 열 수 있고, 결과물은 여는 사람의 드라이브에 저장됩니다.
 
 ## 무엇을 하나
 

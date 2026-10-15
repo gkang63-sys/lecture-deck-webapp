@@ -37,5 +37,5 @@
 
 ## 환경
 - Windows 11, git 2.55, Node 26, npm 11. clasp는 아직 설치 안 됨(`npm i -g @google/clasp`).
-- 사용자의 Chrome(gkang63@gmail.com 로그인)을 Claude in Chrome으로 조작할 수 있다. 계정 설정·권한 허용·비밀 정보 입력은 하지 않는다.
+- 사용자의 Chrome(사용자 본인 구글 계정으로 로그인)을 Claude in Chrome으로 조작할 수 있다. 계정 설정·권한 허용·비밀 정보 입력은 하지 않는다.
 - 제출물: 동작하는 웹앱 URL, 시연용 예시 1회 실행 결과(슬라이드·폼 링크), 한 장짜리 안내 페이지(Artifact), 한 줄 흐름 요약.

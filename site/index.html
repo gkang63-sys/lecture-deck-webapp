@@ -79,11 +79,10 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px}
   <section aria-labelledby="h-url">
     <h2 id="h-url">웹앱 주소</h2>
     <div class="url">
-      <code id="appurl">https://script.google.com/macros/s/AKfycbxFvX9PMCdyp9MB19M9EQ4YfD-hanMMJUi_cL_TBDE3t9k7_9LDo001Xl3vV60Jx2FAIw/exec</code>
-      <button type="button" id="copyBtn">주소 복사</button>
-      <a class="btn-main" href="https://script.google.com/macros/s/AKfycbxFvX9PMCdyp9MB19M9EQ4YfD-hanMMJUi_cL_TBDE3t9k7_9LDo001Xl3vV60Jx2FAIw/exec" target="_blank" rel="noopener">열기</a>
+      <code id="appurl">각자 배포한 웹앱 주소 (…/exec)</code>
+      <a class="btn-main" href="https://github.com/gkang63-sys/lecture-deck-webapp#설치-apps-script--clasp" target="_blank" rel="noopener">배포 방법</a>
     </div>
-    <p class="note">Google Apps Script 웹앱 · 구글 계정이 있으면 누구나 열 수 있고, 만든 자료는 <b>여는 사람의 드라이브</b>에 저장됩니다. 처음 열 때 권한 허용 화면이 나오면 [고급 → 이동 → 허용]. 시연용 [예시 채우기] 버튼이 있습니다.</p>
+    <p class="note">Google Apps Script 웹앱 · GitHub 저장소의 코드를 각자 Apps Script에 올려 배포한 주소로 엽니다(README 「설치」 4번 <code>clasp create-deployment</code>). 구글 계정이 있으면 누구나 열 수 있고, 만든 자료는 <b>여는 사람의 드라이브</b>에 저장됩니다. 처음 열 때 권한 허용 화면이 나오면 [고급 → 이동 → 허용]. 시연용 [예시 채우기] 버튼이 있습니다.</p>
   </section>
 
   <section aria-labelledby="h-demo">
@@ -97,7 +96,7 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px}
     </div>
     <p class="note">아래 결과 링크는 교재 저작권 때문에 강사 계정에서만 열립니다. 직접 해 보려면 웹앱에서 [예시 채우기] → [슬라이드·퀴즈 만들기]를 누르세요.</p>
     <div class="links">
-      <a href="https://script.google.com/macros/s/AKfycbxFvX9PMCdyp9MB19M9EQ4YfD-hanMMJUi_cL_TBDE3t9k7_9LDo001Xl3vV60Jx2FAIw/exec?deck=106woIA4Z2UJvzuiitcoiS_c9akHwvhLS" target="_blank" rel="noopener"><b>HTML 덱 (교수용)</b><small>오디오 · 슬라이드 안 채점 · N 노트 · S 학생 모드</small></a>
+      <a href="https://github.com/gkang63-sys/lecture-deck-webapp#설치-apps-script--clasp" target="_blank" rel="noopener"><b>HTML 덱 (교수용)</b><small>각자 배포한 웹앱 주소 뒤에 ?deck=덱 파일 ID · 오디오 · 슬라이드 안 채점 · N 노트 · S 학생 모드</small></a>
       <a href="https://docs.google.com/presentation/d/1GGCSYUOGkElx_eVixHHUL9OCTluj5l2PnlRydXZDRIM/edit" target="_blank" rel="noopener"><b>구글 슬라이드 (교수용)</b><small>정답 장 · 발표자 노트 포함</small></a>
       <a href="https://docs.google.com/presentation/d/17C8md16jgvY8QJJd89h89ESciEb7-Q-E79z2y5T7nxU/edit" target="_blank" rel="noopener"><b>구글 슬라이드 (학생용)</b><small>정답 장 · 노트를 뺀 사본</small></a>
       <a href="https://docs.google.com/forms/d/1hvKpAfPqeLDI8QAYRsU-plm5ePC8CUtFxCVyAQTW74M/edit" target="_blank" rel="noopener"><b>확인 퀴즈 폼</b><small>퀴즈 모드 · 정답 · 배점 · 해설</small></a>
@@ -160,15 +159,5 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px}
     <p class="note">다음 단계: 지면 사진 자동 배치 다듬기, 구글 슬라이드 장수 조절(HTML 덱은 61장으로 기준 안).</p>
   </section>
 </div>
-
-<script>
-document.getElementById('copyBtn').addEventListener('click', function () {
-  var t = document.getElementById('appurl').textContent, b = this;
-  try {
-    navigator.clipboard.writeText(t).then(function () { b.textContent = '복사됨'; }, function () { sel(); });
-  } catch (e) { sel(); }
-  function sel() { var r = document.createRange(); r.selectNodeContents(document.getElementById('appurl')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = '선택됨 · Ctrl+C'; }
-});
-</script>
 </body>
 </html>
